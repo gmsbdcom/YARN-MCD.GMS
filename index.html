@@ -1,0 +1,3182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>MCD YARN-V-1</title>
+    
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yarn Inventory Management System</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // Firebase Configuration
+    const firebaseConfig = {
+      databaseURL: "https://yarn-mcd-balance-default-rtdb.firebaseio.com/"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Make database functions global for the existing logic to use
+    window.db = db;
+    window.ref = ref;
+    window.set = set;
+    window.onValue = onValue;
+    window.remove = remove;
+
+    // Start App Logic after Firebase loads
+    window.dispatchEvent(new Event('firebase-loaded'));
+  </script>
+
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    .sidebar-nav {
+      position: fixed;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 260px;
+      background: linear-gradient(180deg, #1e40af 0%, #1e3a8a 100%);
+      padding: 20px;
+      overflow-y: auto;
+      box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+      z-index: 100;
+    }
+    
+    .main-content {
+      margin-left: 260px;
+      padding: 20px;
+      min-height: 100%;
+      background: #f8fafc;
+    }
+    
+    .nav-item {
+      padding: 12px 16px;
+      margin: 6px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: rgba(255, 255, 255, 0.85);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+    }
+    
+    .nav-item.active {
+      background: white;
+      color: #1e40af;
+      font-weight: 600;
+    }
+    
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+    
+    .form-section {
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .form-section:last-child {
+      border-bottom: none;
+    }
+    
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e40af;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+    
+    .form-input, .form-select {
+      padding: 10px 12px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all 0.2s;
+      background: white;
+    }
+    
+    .form-input:focus, .form-select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    
+    .form-input.auto-calc {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: #1e40af;
+    }
+    
+    .autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 2px solid #3b82f6;
+      border-radius: 6px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      margin-top: 4px;
+    }
+    
+    .autocomplete-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+      font-size: 14px;
+    }
+    
+    .autocomplete-item:hover {
+      background: #f0f9ff;
+    }
+    
+    .autocomplete-item.selected {
+      background: #dbeafe;
+      font-weight: 600;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    
+    .btn-success {
+      background: #10b981;
+      color: white;
+    }
+    
+    .btn-success:hover {
+      background: #059669;
+    }
+    
+    .btn-secondary {
+      background: #64748b;
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stat-label {
+      font-size: 13px;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+    
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    
+    th {
+      background: #f8fafc;
+      padding: 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #475569;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    
+    tr:hover {
+      background: #f8fafc;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .badge-receive {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    
+    .badge-delivery {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .badge-rereceive {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    
+    .search-bar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .search-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 16px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    
+    .shortcut-info {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #64748b;
+    }
+    
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    
+    .action-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    
+    .action-btn-edit {
+      background: #3b82f6;
+      color: white;
+    }
+    
+    .action-btn-edit:hover {
+      background: #2563eb;
+    }
+    
+    .action-btn-delete {
+      background: #ef4444;
+      color: white;
+    }
+    
+    .action-btn-delete:hover {
+      background: #dc2626;
+    }
+    
+    .report-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      background: white;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    
+    .report-item:hover {
+      border-color: #3b82f6;
+      background: #f8fafc;
+      transform: translateX(4px);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+    }
+    
+    .report-number {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1e40af;
+      min-width: 40px;
+    }
+    
+    .report-name {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-left: 12px;
+    }
+    
+    .report-download-btn {
+      padding: 8px 20px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    }
+    
+    .report-download-btn:hover {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+    }
+  </style>
+ </head>
+ <body>
+  <div class="sidebar-nav" id="sidebar">
+   <div style="color: white; font-size: 20px; font-weight: 700; margin-bottom: 30px; text-align: center;">
+    <div id="system-title">
+     🧶 MCD YARN 
+    </div>
+    <div id="company-name" style="font-size: 12px; opacity: 0.8; margin-top: 4px;">
+     Management System
+    </div>
+   </div>
+   <div class="nav-item active" onclick="navigateTo('dashboard')" data-shortcut="CTRL+H"><span>📊</span> <span>Dashboard</span>
+   </div>
+   <div class="nav-item" onclick="navigateTo('receive')" data-shortcut="CTRL+R"><span>📥</span> <span>Receive Entry</span>
+   </div>
+   <div class="nav-item" onclick="navigateTo('rereceive')" data-shortcut="CTRL+SHIFT+R"><span>🔄</span> <span>Re-Receive</span>
+   </div>
+   <div class="nav-item" onclick="navigateTo('delivery')" data-shortcut="CTRL+D"><span>📤</span> <span>Delivery</span>
+   </div>
+   <div class="nav-item" onclick="navigateTo('ledger')" data-shortcut="CTRL+L"><span>📋</span> <span>Stock Ledger</span>
+   </div>
+   <div class="nav-item" onclick="navigateTo('reports')" data-shortcut="CTRL+P"><span>📈</span> <span>Reports</span>
+   </div>
+    <!-- Reports এর পরে এই লাইনটি বসান -->
+   <div class="nav-item" onclick="navigateTo('calculator')"><span>🧮</span> <span>Yarn Calculator</span></div>
+   <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); font-size: 11px;">
+    <div style="margin-bottom: 8px; font-weight: 600; color: rgba(255,255,255,0.8);">
+     ⌨️ Keyboard Shortcuts
+    </div>
+    <div style="margin: 4px 0;">
+     CTRL+R: New Receive
+    </div>
+    <div style="margin: 4px 0;">
+     CTRL+SHIFT+R: Re-Receive
+    </div>
+    <div style="margin: 4px 0;">
+     CTRL+D: Delivery
+    </div>
+    <div style="margin: 4px 0;">
+     CTRL+S: Save
+    </div>
+    <div style="margin: 4px 0;">
+     CTRL+L: Stock Ledger
+    </div>
+   </div>
+  </div>
+  <div class="main-content" id="mainContent">
+      <div style="display: flex; height: 100vh; align-items: center; justify-content: center; flex-direction: column;">
+          <div class="loading-spinner" style="border-top-color: #1e40af; width: 40px; height: 40px;"></div>
+          <p style="margin-top: 10px; color: #64748b;">Connecting to Database...</p>
+      </div>
+  </div>
+  
+  <script>
+    const defaultConfig = {
+      system_title: "🧶 Yarn Inventory",
+      company_name: "Management System"
+    };
+    
+    let allRecords = [];
+    let masterData = {
+      types: [],
+      components: [],
+      brands: []
+    };
+    let currentPage = 'dashboard';
+    
+    // Process Data from Firebase
+    function processFirebaseData(data) {
+        allRecords = [];
+        if (data) {
+            // Convert Object to Array
+            Object.keys(data).forEach(key => {
+                allRecords.push(data[key]);
+            });
+        }
+        
+        // Build master data lists from saved records
+        const types = new Set();
+        const components = new Set();
+        const brands = new Set();
+        
+        allRecords.forEach(record => {
+          if (record.module === 'master_type' && record.master_value) {
+            types.add(record.master_value);
+          } else if (record.module === 'master_component' && record.master_value) {
+            components.add(record.master_value);
+          } else if (record.module === 'master_brand' && record.master_value) {
+            brands.add(record.master_value);
+          }
+        });
+        
+        masterData.types = Array.from(types).sort();
+        masterData.components = Array.from(components).sort();
+        masterData.brands = Array.from(brands).sort();
+        
+        renderCurrentPage();
+    }
+    
+    // Save to Firebase Helper
+    async function saveToFirebase(record) {
+        if (!window.db || !window.set || !window.ref) {
+            console.error("Firebase not initialized");
+            return { isOk: false };
+        }
+        try {
+            const recordRef = window.ref(window.db, 'records/' + record.id);
+            await window.set(recordRef, record);
+            return { isOk: true };
+        } catch (error) {
+            console.error("Firebase Save Error:", error);
+            return { isOk: false, error: error };
+        }
+    }
+
+    // Wait for Firebase to load
+    window.addEventListener('firebase-loaded', () => {
+        initializeApp();
+    });
+    
+    function initializeApp() {
+      // Setup Realtime Listener
+      const recordsRef = window.ref(window.db, 'records');
+      window.onValue(recordsRef, (snapshot) => {
+          const data = snapshot.val();
+          processFirebaseData(data);
+      });
+      
+      setupKeyboardShortcuts();
+      // Initial Render will happen after data loads
+    }
+    
+    function setupKeyboardShortcuts() {
+      document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && e.key === 'R') {
+          e.preventDefault();
+          navigateTo('rereceive');
+        } else if (e.ctrlKey && e.key === 'r') {
+          e.preventDefault();
+          navigateTo('receive');
+        } else if (e.ctrlKey && e.key === 'd') {
+          e.preventDefault();
+          navigateTo('delivery');
+        } else if (e.ctrlKey && e.key === 'l') {
+          e.preventDefault();
+          navigateTo('ledger');
+        } else if (e.ctrlKey && e.key === 'h') {
+          e.preventDefault();
+          navigateTo('dashboard');
+        } else if (e.ctrlKey && e.key === 's') {
+          e.preventDefault();
+          const saveBtn = document.querySelector('.btn-primary');
+          if (saveBtn) saveBtn.click();
+        }
+      });
+    }
+    
+    function navigateTo(page) {
+      currentPage = page;
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      event?.currentTarget?.classList.add('active');
+      renderCurrentPage();
+    }
+    
+    function renderCurrentPage() {
+      // Check if data is loaded or just empty
+      if(!allRecords && currentPage !== 'dashboard') {
+         // handle loading state if needed
+      }
+
+      const mainContent = document.getElementById('mainContent');
+      
+      switch(currentPage) {
+        case 'dashboard':
+          renderDashboard();
+          break;
+        case 'receive':
+          renderReceiveForm();
+          break;
+        case 'rereceive':
+          renderReReceiveForm();
+          break;
+        case 'delivery':
+          renderDeliveryForm();
+          break;
+        case 'ledger':
+          renderStockLedger();
+          break;
+        case 'reports':
+          renderReports();
+          break;
+          // reports এর পরে এটি বসান
+        case 'calculator':
+          renderCalculator();
+          break;
+      }
+    }
+    
+    function renderDashboard() {
+      const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
+      
+      // Get unique values for filters
+      const allLots = [...new Set(transactionRecords.map(r => r.lot).filter(Boolean))].sort();
+      const allCounts = [...new Set(transactionRecords.map(r => r.count).filter(Boolean))].sort();
+      const allBrands = [...new Set(transactionRecords.map(r => r.brand).filter(Boolean))].sort();
+      const allLocations = [...new Set(transactionRecords.map(r => r.location).filter(Boolean))].sort();
+      
+      const receiveRecords = allRecords.filter(r => r.module === 'receive' || r.module === 'rereceive');
+      const deliveryRecords = allRecords.filter(r => r.module === 'delivery');
+      
+      const totalReceived = receiveRecords.reduce((sum, r) => sum + (r.received_qty || 0), 0);
+      const totalDelivered = deliveryRecords.reduce((sum, r) => sum + (r.issued_qty || 0), 0);
+      const currentStock = totalReceived - totalDelivered;
+      const uniqueLots = new Set(receiveRecords.map(r => r.lot)).size;
+      
+      const recentTransactions = [...allRecords]
+        .filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand')
+        .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date))
+        .slice(0, 10);
+      
+      const html = `
+        <div>
+          <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 24px;">📊 Dashboard Overview</h1>
+          
+          <div class="card" style="margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+              <h2 style="font-size: 18px; font-weight: 700; color: #1e40af; margin: 0;">🔍 Smart Filters</h2>
+              <button onclick="resetDashboardFilters()" class="btn btn-secondary" style="padding: 8px 16px; font-size: 13px;">Clear All Filters</button>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+              <div class="form-group">
+                <label class="form-label" for="dash_filter_lot">LOT Number</label>
+                <select id="dash_filter_lot" class="form-select" onchange="applyDashboardFilters()">
+                  <option value="">All LOTs</option>
+                  ${allLots.map(lot => `<option value="${lot}">${lot}</option>`).join('')}
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="dash_filter_count">Yarn Count</label>
+                <select id="dash_filter_count" class="form-select" onchange="applyDashboardFilters()">
+                  <option value="">All Counts</option>
+                  ${allCounts.map(count => `<option value="${count}">${count}</option>`).join('')}
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="dash_filter_brand">Brand</label>
+                <select id="dash_filter_brand" class="form-select" onchange="applyDashboardFilters()">
+                  <option value="">All Brands</option>
+                  ${allBrands.map(brand => `<option value="${brand}">${brand}</option>`).join('')}
+                </select>
+              </div>
+              
+              <!-- Buyer এর পরিবর্তে Transaction Type বসানো হলো -->
+              <div class="form-group">
+                <label class="form-label" for="dash_filter_module">Transaction Type</label>
+                <select id="dash_filter_module" class="form-select" onchange="applyDashboardFilters()">
+                  <option value="">All Types</option>
+                  <option value="receive">Receive Only</option>
+                  <option value="delivery">Delivery Only</option>
+                  <option value="rereceive">Re-Receive Only</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="dash_filter_location">Location</label>
+                <select id="dash_filter_location" class="form-select" onchange="applyDashboardFilters()">
+                  <option value="">All Locations</option>
+                  ${allLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('')}
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="dash_filter_from_date">From Date</label>
+                <input type="date" id="dash_filter_from_date" class="form-input" onchange="applyDashboardFilters()">
+              </div>
+              
+              <div class="form-group">
+                <label class="form-label" for="dash_filter_to_date">To Date</label>
+                <input type="date" id="dash_filter_to_date" class="form-input" onchange="applyDashboardFilters()">
+              </div>
+              
+              <div class="form-group" style="display: flex; align-items: flex-end;">
+                <button onclick="exportDashboardToExcel()" class="btn btn-success" style="width: 100%; padding: 10px;">
+                  📥 Export to Excel
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+              <div class="stat-label">Total Received (Kg)</div>
+              <div class="stat-value">${totalReceived.toFixed(2)}</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+              <div class="stat-label">Total Delivered (Kg)</div>
+              <div class="stat-value">${totalDelivered.toFixed(2)}</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+              <div class="stat-label">Current Stock (Kg)</div>
+              <div class="stat-value">${currentStock.toFixed(2)}</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+              <div class="stat-label">Active Lots</div>
+              <div class="stat-value">${uniqueLots}</div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 16px;">Recent Transactions</h2>
+            ${recentTransactions.length > 0 ? `
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>LOT No</th>
+                      <th>Brand</th>
+                      <th>Count</th>
+                      <th>Quantity (Kg)</th>
+                      <th>Buyer/Issued To</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dashboardTableBody">
+                    ${recentTransactions.map(record => `
+                      <tr>
+                        <td>${new Date(record.transaction_date).toLocaleDateString()}</td>
+                        <td>
+                          <span class="badge badge-${record.module}">${
+                            record.module === 'receive' ? 'Receive' : 
+                            record.module === 'rereceive' ? 'Re-Receive' : 'Delivery'
+                          }</span>
+                        </td>
+                        <td><strong>${record.lot || '-'}</strong></td>
+                        <td>${record.brand || '-'}</td>
+                        <td>${record.count || '-'}</td>
+                        <td><strong>${record.received_qty || record.issued_qty || 0} Kg</strong></td>
+                        <td>${record.buyer || record.issued_to || '-'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : `
+              <div class="empty-state">
+                <div class="empty-state-icon">📭</div>
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No Transactions Yet</div>
+                <div>Start by creating a receive entry using CTRL+R</div>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('mainContent').innerHTML = html;
+    }
+    
+    function renderReceiveForm() {
+      const hasTypes = masterData.types.length > 0;
+      const hasComponents = masterData.components.length > 0;
+      const hasBrands = masterData.brands.length > 0;
+      
+      const html = `
+        <div>
+          <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">📥 Receive Entry</h1>
+          <p style="color: #64748b; margin-bottom: 24px;">Record new yarn receipt with smart auto-suggest fields</p>
+          
+          <div class="shortcut-info">
+            <strong>⌨️ Smart Auto-Suggest:</strong> Type in Yarn Type, Component, or Brand fields - saved values will appear for quick selection!
+          </div>
+          
+          <div class="card">
+            <form id="receiveForm" onsubmit="handleReceiveSubmit(event)">
+              <div class="form-section">
+                <div class="section-title">📋 Basic Information</div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label" for="lc_no">L/C No *</label>
+                    <input type="text" id="lc_no" class="form-input" required placeholder="Enter L/C Number">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="pi_no">PI No</label>
+                    <input type="text" id="pi_no" class="form-input" placeholder="Enter PI Number">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="count">Yarn Count *</label>
+                    <input type="text" id="count" class="form-input" required placeholder="e.g., 30s">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="type">Yarn Type * ${hasTypes ? '🔍' : ''}</label>
+                    <input type="text" id="type" class="form-input" required placeholder="e.g., Combed" oninput="showAutocomplete('type')" onfocus="showAutocomplete('type')" autocomplete="off">
+                    <div id="type_dropdown" class="autocomplete-dropdown" style="display: none;"></div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="component">Yarn Component ${hasComponents ? '🔍' : ''}</label>
+                    <input type="text" id="component" class="form-input" placeholder="e.g., 100% Cotton" oninput="showAutocomplete('component')" onfocus="showAutocomplete('component')" autocomplete="off">
+                    <div id="component_dropdown" class="autocomplete-dropdown" style="display: none;"></div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="brand">Brand Name * ${hasBrands ? '🔍' : ''}</label>
+                    <input type="text" id="brand" class="form-input" required placeholder="Enter Brand" oninput="showAutocomplete('brand')" onfocus="showAutocomplete('brand')" autocomplete="off">
+                    <div id="brand_dropdown" class="autocomplete-dropdown" style="display: none;"></div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="lot">Lot Number *</label>
+                    <input type="text" id="lot" class="form-input" required placeholder="Enter LOT Number">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="receive_date">Receiving Date *</label>
+                    <input type="date" id="receive_date" class="form-input" required>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="form-section">
+                <div class="section-title">📦 Quantity & Stock Information</div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label" for="lc_qty">L/C Qty (Kg)</label>
+                    <input type="number" step="0.01" id="lc_qty" class="form-input" placeholder="0.00">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="before_qty">Before Qty (Kg)</label>
+                    <input type="number" step="0.01" id="before_qty" class="form-input auto-calc" value="0.00" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="received_qty">Received Qty (Kg) *</label>
+                    <input type="number" step="0.01" id="received_qty" class="form-input" required placeholder="0.00" oninput="calculateTotals()">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="total_qty">Total Qty (Kg)</label>
+                    <input type="number" step="0.01" id="total_qty" class="form-input auto-calc" value="0.00" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="issued_qty">Issued Qty (Kg)</label>
+                    <input type="number" step="0.01" id="issued_qty" class="form-input auto-calc" value="0.00" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="balance_qty">Balance Qty (Kg)</label>
+                    <input type="number" step="0.01" id="balance_qty" class="form-input auto-calc" value="0.00" readonly>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="form-section">
+                <div class="section-title">ℹ️ Additional Information</div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label" for="buyer">Buyer Name</label>
+                    <input type="text" id="buyer" class="form-input" placeholder="Enter Buyer Name">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="year">Year</label>
+                    <input type="text" id="year" class="form-input" placeholder="e.g., 2024">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="order_style">Order / Style</label>
+                    <input type="text" id="order_style" class="form-input" placeholder="Enter Order/Style">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="location">Location</label>
+                    <input type="text" id="location" class="form-input" placeholder="Storage Location">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="row_col">Row & Column</label>
+                    <input type="text" id="row_col" class="form-input" placeholder="e.g., A-12">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="certification">Certification</label>
+                    <input type="text" id="certification" class="form-input" placeholder="e.g., GOTS, OCS">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="weight_cone">Weight & Cone</label>
+                    <input type="text" id="weight_cone" class="form-input" placeholder="e.g., 1.5kg/cone">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="receive_from">Receive From</label>
+                    <input type="text" id="receive_from" class="form-input" placeholder="Supplier Name">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="tc_no">TC Number</label>
+                    <input type="text" id="tc_no" class="form-input" placeholder="Test Certificate Number">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="unit_price">Unit Price (per Kg)</label>
+                    <input type="number" step="0.01" id="unit_price" class="form-input" placeholder="0.00" oninput="calculateTotals()">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="total_amount">Total Amount</label>
+                    <input type="number" step="0.01" id="total_amount" class="form-input auto-calc" value="0.00" readonly>
+                  </div>
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label" for="remarks">Remarks</label>
+                    <input type="text" id="remarks" class="form-input" placeholder="Additional notes">
+                  </div>
+                </div>
+              </div>
+              
+              <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="resetReceiveForm()">Clear Form</button>
+                <button type="submit" class="btn btn-primary" id="receiveSubmitBtn">
+                  <span>💾 Save Receive Entry</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('mainContent').innerHTML = html;
+      document.getElementById('receive_date').valueAsDate = new Date();
+      
+      // Close autocomplete when clicking outside
+      document.addEventListener('click', closeAllAutocomplete);
+    }
+    
+    function showAutocomplete(fieldName) {
+      const input = document.getElementById(fieldName);
+      const dropdown = document.getElementById(fieldName + '_dropdown');
+      
+      if (!input || !dropdown) return;
+      
+      const searchTerm = input.value.toLowerCase().trim();
+      let items = [];
+      
+      if (fieldName === 'type') {
+        items = masterData.types;
+      } else if (fieldName === 'component') {
+        items = masterData.components;
+      } else if (fieldName === 'brand') {
+        items = masterData.brands;
+      }
+      
+      if (items.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      
+      // Filter items based on search term
+      const filteredItems = searchTerm
+        ? items.filter(item => item.toLowerCase().includes(searchTerm))
+        : items;
+      
+      if (filteredItems.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      
+      // Build dropdown HTML
+      dropdown.innerHTML = filteredItems.map(item => `
+        <div class="autocomplete-item" onclick="selectAutocompleteItem('${fieldName}', '${item.replace(/'/g, "\\'")}')">
+          ${item}
+        </div>
+      `).join('');
+      
+      dropdown.style.display = 'block';
+    }
+    
+    function selectAutocompleteItem(fieldName, value) {
+      const input = document.getElementById(fieldName);
+      const dropdown = document.getElementById(fieldName + '_dropdown');
+      
+      if (input) input.value = value;
+      if (dropdown) dropdown.style.display = 'none';
+    }
+    
+    function closeAllAutocomplete(event) {
+      const autocompleteFields = ['type', 'component', 'brand'];
+      
+      autocompleteFields.forEach(fieldName => {
+        const input = document.getElementById(fieldName);
+        const dropdown = document.getElementById(fieldName + '_dropdown');
+        
+        if (dropdown && input && event.target !== input && !dropdown.contains(event.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
+    }
+    
+    async function saveMasterData(fieldName, value) {
+      if (!value || value.trim() === '') return;
+      
+      const trimmedValue = value.trim();
+      
+      // Check if already exists
+      let existingList = [];
+      if (fieldName === 'type') existingList = masterData.types;
+      else if (fieldName === 'component') existingList = masterData.components;
+      else if (fieldName === 'brand') existingList = masterData.brands;
+      
+      if (existingList.includes(trimmedValue)) return; // Already saved
+      
+      // Save to backend
+      const masterRecord = {
+        id: 'MASTER-' + fieldName.toUpperCase() + '-' + Date.now(),
+        module: 'master_' + fieldName,
+        master_value: trimmedValue,
+        transaction_date: new Date().toISOString()
+      };
+      
+      await saveToFirebase(masterRecord);
+    }
+    
+    function calculateTotals() {
+      const beforeQty = parseFloat(document.getElementById('before_qty')?.value) || 0;
+      const receivedQty = parseFloat(document.getElementById('received_qty')?.value) || 0;
+      const unitPrice = parseFloat(document.getElementById('unit_price')?.value) || 0;
+      
+      const totalQty = beforeQty + receivedQty;
+      const totalAmount = receivedQty * unitPrice;
+      
+      if (document.getElementById('total_qty')) {
+        document.getElementById('total_qty').value = totalQty.toFixed(2);
+      }
+      if (document.getElementById('balance_qty')) {
+        document.getElementById('balance_qty').value = totalQty.toFixed(2);
+      }
+      if (document.getElementById('total_amount')) {
+        document.getElementById('total_amount').value = totalAmount.toFixed(2);
+      }
+    }
+    
+    async function handleReceiveSubmit(event) {
+      event.preventDefault();
+      
+      const submitBtn = document.getElementById('receiveSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span> <span>Saving...</span>';
+      
+      const typeValue = document.getElementById('type').value;
+      const componentValue = document.getElementById('component').value;
+      const brandValue = document.getElementById('brand').value;
+      
+      // Save master data first (if new)
+      await saveMasterData('type', typeValue);
+      await saveMasterData('component', componentValue);
+      await saveMasterData('brand', brandValue);
+      
+      const formData = {
+        id: 'REC-' + Date.now(),
+        module: 'receive',
+        lc_no: document.getElementById('lc_no').value,
+        pi_no: document.getElementById('pi_no').value,
+        count: document.getElementById('count').value,
+        type: typeValue,
+        component: componentValue,
+        brand: brandValue,
+        lot: document.getElementById('lot').value,
+        receive_date: document.getElementById('receive_date').value,
+        lc_qty: parseFloat(document.getElementById('lc_qty').value) || 0,
+        before_qty: parseFloat(document.getElementById('before_qty').value) || 0,
+        received_qty: parseFloat(document.getElementById('received_qty').value) || 0,
+        total_qty: parseFloat(document.getElementById('total_qty').value) || 0,
+        issued_qty: parseFloat(document.getElementById('issued_qty').value) || 0,
+        balance_qty: parseFloat(document.getElementById('balance_qty').value) || 0,
+        buyer: document.getElementById('buyer').value,
+        year: document.getElementById('year').value,
+        order_style: document.getElementById('order_style').value,
+        location: document.getElementById('location').value,
+        row_col: document.getElementById('row_col').value,
+        certification: document.getElementById('certification').value,
+        weight_cone: document.getElementById('weight_cone').value,
+        receive_from: document.getElementById('receive_from').value,
+        tc_no: document.getElementById('tc_no').value,
+        remarks: document.getElementById('remarks').value,
+        unit_price: parseFloat(document.getElementById('unit_price').value) || 0,
+        total_amount: parseFloat(document.getElementById('total_amount').value) || 0,
+        transaction_date: new Date().toISOString()
+      };
+      
+      const result = await saveToFirebase(formData);
+      
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>💾 Save Receive Entry</span>';
+      
+      if (result.isOk) {
+        showNotification('✅ Receive entry saved successfully!', 'success');
+        resetReceiveForm();
+      } else {
+        showNotification('❌ Failed to save receive entry. Please try again.', 'error');
+      }
+    }
+    
+    function resetReceiveForm() {
+      document.getElementById('receiveForm').reset();
+      document.getElementById('receive_date').valueAsDate = new Date();
+      document.getElementById('before_qty').value = '0.00';
+      document.getElementById('total_qty').value = '0.00';
+      document.getElementById('issued_qty').value = '0.00';
+      document.getElementById('balance_qty').value = '0.00';
+      document.getElementById('total_amount').value = '0.00';
+    }
+    
+    function renderReReceiveForm() {
+      const html = `
+        <div>
+          <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">🔄 Re-Receive Entry</h1>
+          <p style="color: #64748b; margin-bottom: 24px;">Record additional quantity for existing LOT</p>
+          
+          <div class="shortcut-info">
+            <strong>💡 Smart Picker:</strong> Type LOT, COUNT, BRAND, or COMPOSITION to search and select the exact item
+          </div>
+          
+          <div class="card">
+            <form id="rereceiveForm" onsubmit="handleReReceiveSubmit(event)">
+              <div class="form-section">
+                <div class="section-title">🔍 Smart Item Picker</div>
+                <div class="form-grid">
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label" for="rr_search">Search by LOT / COUNT / BRAND / COMPOSITION *</label>
+                    <input type="text" id="rr_search" class="form-input" placeholder="Type to search..." oninput="showReReceivePickerTable()" autocomplete="off" style="font-size: 16px; padding: 12px;">
+                  </div>
+                </div>
+                
+                <div id="rr_picker_popup" style="display: none; margin-top: 12px; border: 2px solid #3b82f6; border-radius: 8px; background: white; max-height: 400px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
+                  <div style="padding: 12px; background: #3b82f6; color: white; font-weight: 600; position: sticky; top: 0; z-index: 5;">
+                    Select Item to Re-Receive
+                  </div>
+                  <table id="rr_picker_table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead style="position: sticky; top: 44px; background: #f8fafc; z-index: 4;">
+                      <tr>
+                        <th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">LOT</th>
+                        <th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">COUNT</th>
+                        <th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">BRAND</th>
+                        <th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">COMPOSITION</th>
+                        <th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">LOCATION</th>
+                        <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #e2e8f0;">Balance Qty</th>
+                        <th style="padding: 10px 12px; text-align: center; border-bottom: 2px solid #e2e8f0;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="rr_picker_tbody">
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div class="form-grid" style="margin-top: 16px;">
+                  <div class="form-group">
+                    <label class="form-label" for="rr_receive_date">Receiving Date *</label>
+                    <input type="date" id="rr_receive_date" class="form-input" required>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="form-section">
+                <div class="section-title">📋 Auto-Loaded Information</div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label" for="rr_brand">Brand Name</label>
+                    <input type="text" id="rr_brand" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_count">Yarn Count</label>
+                    <input type="text" id="rr_count" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_type">Yarn Type</label>
+                    <input type="text" id="rr_type" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_component">Component</label>
+                    <input type="text" id="rr_component" class="form-input auto-calc" readonly>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="form-section">
+                <div class="section-title">📦 Quantity Details</div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label" for="rr_before_qty">Before Qty (Kg)</label>
+                    <input type="number" step="0.01" id="rr_before_qty" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_received_qty">Received Qty (Kg) *</label>
+                    <input type="number" step="0.01" id="rr_received_qty" class="form-input" required placeholder="0.00" oninput="calculateReReceiveTotals()">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_total_qty">Total Qty (Kg)</label>
+                    <input type="number" step="0.01" id="rr_total_qty" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_balance_qty">Balance Qty (Kg)</label>
+                    <input type="number" step="0.01" id="rr_balance_qty" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_unit_price">Unit Price (per Kg)</label>
+                    <input type="number" step="0.01" id="rr_unit_price" class="form-input" placeholder="0.00" oninput="calculateReReceiveTotals()">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_total_amount">Total Amount</label>
+                    <input type="number" step="0.01" id="rr_total_amount" class="form-input auto-calc" readonly>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="form-section" style="display: none;">
+                <div class="section-title">ℹ️ Additional Information</div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label" for="rr_lc_no">L/C No</label>
+                    <input type="text" id="rr_lc_no" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_pi_no">PI No</label>
+                    <input type="text" id="rr_pi_no" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_buyer">Buyer</label>
+                    <input type="text" id="rr_buyer" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_year">Year</label>
+                    <input type="text" id="rr_year" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_order_style">Order/Style</label>
+                    <input type="text" id="rr_order_style" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_location">Location</label>
+                    <input type="text" id="rr_location" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_row_col">Row & Column</label>
+                    <input type="text" id="rr_row_col" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_certification">Certification</label>
+                    <input type="text" id="rr_certification" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_weight_cone">Weight & Cone</label>
+                    <input type="text" id="rr_weight_cone" class="form-input auto-calc" readonly>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="rr_receive_from">Receive From</label>
+                    <input type="text" id="rr_receive_from" class="form-input" placeholder="Supplier Name">
+                  </div>
+                  <div class="form-group" style="grid-column: 1 / -1;">
+                    <label class="form-label" for="rr_remarks">Remarks</label>
+                    <input type="text" id="rr_remarks" class="form-input" placeholder="Additional notes">
+                  </div>
+                </div>
+              </div>
+              
+              <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button type="button" class="btn btn-secondary" onclick="resetReReceiveForm()">Clear Form</button>
+                <button type="submit" class="btn btn-success" id="rereceiveSubmitBtn">
+                  <span>🔄 Save Re-Receive Entry</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('mainContent').innerHTML = html;
+      document.getElementById('rr_receive_date').valueAsDate = new Date();
+    }
+    
+    let selectedReReceiveItem = null;
+    
+    function showReReceivePickerTable() {
+      const searchTerm = document.getElementById('rr_search').value.toLowerCase().trim();
+      const popup = document.getElementById('rr_picker_popup');
+      const tbody = document.getElementById('rr_picker_tbody');
+      
+      if (!searchTerm) {
+        popup.style.display = 'none';
+        return;
+      }
+      
+      const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
+      const itemsMap = new Map();
+      
+      transactionRecords.forEach(record => {
+        if (record.module !== 'receive' && record.module !== 'rereceive') return;
+        if (!record.lot) return;
+        
+        const key = `${record.lot}|${record.count || ''}|${record.brand || ''}|${record.component || ''}`;
+        
+        if (!itemsMap.has(key)) {
+          itemsMap.set(key, {
+            lot: record.lot,
+            count: record.count || '',
+            brand: record.brand || '',
+            component: record.component || '',
+            lc_no: record.lc_no || '',
+            pi_no: record.pi_no || '',
+            type: record.type || '',
+            buyer: record.buyer || '',
+            year: record.year || '',
+            order_style: record.order_style || '',
+            location: record.location || '',
+            row_col: record.row_col || '',
+            certification: record.certification || '',
+            weight_cone: record.weight_cone || '',
+            receive_from: record.receive_from || '',
+            tc_no: record.tc_no || '',
+            unit_price: record.unit_price || 0,
+            lc_qty: record.lc_qty || 0,
+            received: 0,
+            issued: 0,
+            balance: 0
+          });
+        }
+      });
+      
+      itemsMap.forEach((item, key) => {
+        const [lot, count, brand, component] = key.split('|');
+        
+        const receiveRecords = transactionRecords.filter(r => 
+          (r.module === 'receive' || r.module === 'rereceive') &&
+          r.lot === lot && (r.count || '') === count && (r.brand || '') === brand && (r.component || '') === component
+        );
+        
+        const deliveryRecords = transactionRecords.filter(r => 
+          r.module === 'delivery' &&
+          r.lot === lot && (r.count || '') === count && (r.brand || '') === brand
+        );
+        
+        item.received = receiveRecords.reduce((sum, r) => sum + (parseFloat(r.received_qty) || 0), 0);
+        item.issued = deliveryRecords.reduce((sum, r) => sum + (parseFloat(r.issued_qty) || 0), 0);
+        item.balance = item.received - item.issued;
+      });
+      
+      const filteredItems = Array.from(itemsMap.values()).filter(item => {
+        return (
+          (item.lot || '').toLowerCase().includes(searchTerm) ||
+          (item.count || '').toLowerCase().includes(searchTerm) ||
+          (item.brand || '').toLowerCase().includes(searchTerm) ||
+          (item.component || '').toLowerCase().includes(searchTerm)
+        );
+      });
+      
+      if (filteredItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding: 20px; text-align: center; color: #64748b;">No matching items found</td></tr>';
+        popup.style.display = 'block';
+        return;
+      }
+      
+      tbody.innerHTML = filteredItems.map((item, index) => `
+        <tr style="cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'" onclick="selectReReceiveItem(${index})">
+          <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;"><strong>${item.lot || '-'}</strong></td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">${item.count || '-'}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">${item.brand || '-'}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">${item.component || '-'}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9;">${item.location || '-'}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; text-align: right; font-weight: 600; color: ${item.balance > 0 ? '#10b981' : '#dc2626'};">${item.balance.toFixed(2)} Kg</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #f1f5f9; text-align: center;">
+            <button type="button" class="action-btn" style="background: #10b981; color: white; padding: 6px 16px;" onclick="selectReReceiveItem(${index}); event.stopPropagation();">Select ✓</button>
+          </td>
+        </tr>
+      `).join('');
+      
+      popup.style.display = 'block';
+      
+      window.reReceiveFilteredItems = filteredItems;
+    }
+    
+    function selectReReceiveItem(index) {
+      const item = window.reReceiveFilteredItems[index];
+      if (!item) return;
+      
+      selectedReReceiveItem = item;
+      
+      document.getElementById('rr_search').value = `${item.lot} | ${item.count} | ${item.brand} | ${item.component}`;
+      
+      document.getElementById('rr_picker_popup').style.display = 'none';
+      
+      document.getElementById('rr_brand').value = item.brand || '';
+      document.getElementById('rr_count').value = item.count || '';
+      document.getElementById('rr_type').value = item.type || '';
+      document.getElementById('rr_component').value = item.component || '';
+      document.getElementById('rr_lc_no').value = item.lc_no || '';
+      document.getElementById('rr_pi_no').value = item.pi_no || '';
+      document.getElementById('rr_buyer').value = item.buyer || '';
+      document.getElementById('rr_year').value = item.year || '';
+      document.getElementById('rr_order_style').value = item.order_style || '';
+      document.getElementById('rr_location').value = item.location || '';
+      document.getElementById('rr_row_col').value = item.row_col || '';
+      document.getElementById('rr_certification').value = item.certification || '';
+      document.getElementById('rr_weight_cone').value = item.weight_cone || '';
+      document.getElementById('rr_unit_price').value = item.unit_price || 0;
+      
+      document.getElementById('rr_before_qty').value = item.balance.toFixed(2);
+      
+      calculateReReceiveTotals();
+      
+      showNotification(`✅ Item selected: ${item.lot} - ${item.count} - ${item.brand}`, 'success');
+    }
+    
+    function calculateReReceiveTotals() {
+      const beforeQty = parseFloat(document.getElementById('rr_before_qty')?.value) || 0;
+      const receivedQty = parseFloat(document.getElementById('rr_received_qty')?.value) || 0;
+      const unitPrice = parseFloat(document.getElementById('rr_unit_price')?.value) || 0;
+      
+      const totalQty = beforeQty + receivedQty;
+      const totalAmount = receivedQty * unitPrice;
+      
+      if (document.getElementById('rr_total_qty')) {
+        document.getElementById('rr_total_qty').value = totalQty.toFixed(2);
+      }
+      if (document.getElementById('rr_balance_qty')) {
+        document.getElementById('rr_balance_qty').value = totalQty.toFixed(2);
+      }
+      if (document.getElementById('rr_total_amount')) {
+        document.getElementById('rr_total_amount').value = totalAmount.toFixed(2);
+      }
+    }
+    
+    async function handleReReceiveSubmit(event) {
+      event.preventDefault();
+      
+      if (!selectedReReceiveItem) {
+        showNotification('❌ Please select an item from the picker table first.', 'error');
+        return;
+      }
+      
+      const submitBtn = document.getElementById('rereceiveSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span> <span>Saving...</span>';
+      
+      const formData = {
+        id: 'REREC-' + Date.now(),
+        module: 'rereceive',
+        lc_no: selectedReReceiveItem.lc_no,
+        pi_no: selectedReReceiveItem.pi_no,
+        count: selectedReReceiveItem.count,
+        type: selectedReReceiveItem.type,
+        component: selectedReReceiveItem.component,
+        brand: selectedReReceiveItem.brand,
+        lot: selectedReReceiveItem.lot,
+        receive_date: document.getElementById('rr_receive_date').value,
+        lc_qty: selectedReReceiveItem.lc_qty,
+        before_qty: parseFloat(document.getElementById('rr_before_qty').value) || 0,
+        received_qty: parseFloat(document.getElementById('rr_received_qty').value) || 0,
+        total_qty: parseFloat(document.getElementById('rr_total_qty').value) || 0,
+        issued_qty: 0,
+        balance_qty: parseFloat(document.getElementById('rr_balance_qty').value) || 0,
+        buyer: selectedReReceiveItem.buyer,
+        year: selectedReReceiveItem.year,
+        order_style: selectedReReceiveItem.order_style,
+        location: selectedReReceiveItem.location,
+        row_col: selectedReReceiveItem.row_col,
+        certification: selectedReReceiveItem.certification,
+        weight_cone: selectedReReceiveItem.weight_cone,
+        receive_from: document.getElementById('rr_receive_from').value || selectedReReceiveItem.receive_from,
+        tc_no: selectedReReceiveItem.tc_no || '',
+        remarks: document.getElementById('rr_remarks').value,
+        unit_price: parseFloat(document.getElementById('rr_unit_price').value) || selectedReReceiveItem.unit_price || 0,
+        total_amount: parseFloat(document.getElementById('rr_total_amount').value) || 0,
+        transaction_date: new Date().toISOString()
+      };
+      
+      const result = await saveToFirebase(formData);
+      
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>🔄 Save Re-Receive Entry</span>';
+      
+      if (result.isOk) {
+        showNotification('✅ Re-receive entry saved successfully!', 'success');
+        resetReReceiveForm();
+      } else {
+        showNotification('❌ Failed to save re-receive entry. Please try again.', 'error');
+      }
+    }
+    
+    function resetReReceiveForm() {
+      document.getElementById('rereceiveForm').reset();
+      document.getElementById('rr_receive_date').valueAsDate = new Date();
+      document.getElementById('rr_brand').value = '';
+      document.getElementById('rr_count').value = '';
+      document.getElementById('rr_type').value = '';
+      document.getElementById('rr_component').value = '';
+      document.getElementById('rr_before_qty').value = '0.00';
+      document.getElementById('rr_total_qty').value = '0.00';
+      document.getElementById('rr_balance_qty').value = '0.00';
+      document.getElementById('rr_total_amount').value = '0.00';
+    }
+    
+// ==========================================
+    // DIRECT GRID DELIVERY LOGIC START
+    // ==========================================
+
+    let activeStockItems = []; // স্টক ডাটা রাখার জন্য
+
+    function renderDeliveryForm() {
+      // 1. Calculate Stock First
+      calculateActiveStock();
+
+      const html = `
+        <div style="height: 100%; display: flex; flex-direction: column;">
+          <div style="flex: 0 0 auto;">
+            <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">📤 Direct Delivery Entry</h1>
+            <p style="color: #64748b; margin-bottom: 16px;">Filter items and enter quantity directly in the table.</p>
+            
+            <!-- COMMON INFO SECTION -->
+            <div class="card" style="padding: 16px; margin-bottom: 16px; background: #f1f5f9; border: 1px solid #cbd5e1;">
+              <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+                <div style="flex: 1; min-width: 150px;">
+                    <label class="form-label" style="margin-bottom: 4px; display:block;">Delivery Date *</label>
+                    <input type="date" id="bulk_date" class="form-input" style="width: 100%;" required>
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label class="form-label" style="margin-bottom: 4px; display:block;">Issued To / Buyer *</label>
+                    <input type="text" id="bulk_issued_to" class="form-input" style="width: 100%;" placeholder="Example: Knitting Section">
+                </div>
+                <div style="flex: 1; min-width: 200px;">
+                    <label class="form-label" style="margin-bottom: 4px; display:block;">Common Remarks</label>
+                    <input type="text" id="bulk_remarks" class="form-input" style="width: 100%;" placeholder="Optional Note">
+                </div>
+                 <div style="flex: 0 0 auto;">
+                    <button onclick="handleBulkDeliverySubmit()" id="bulkSubmitBtn" class="btn btn-primary" style="height: 42px;">
+                      <span>💾 SAVE DELIVERIES</span>
+                    </button>
+                </div>
+              </div>
+            </div>
+
+<!-- FILTER SECTION -->
+            <div class="card" style="padding: 12px; margin-bottom: 10px; display: flex; gap: 10px; background: #3b82f6; color: white;">
+               <div style="font-weight: bold; align-self: center; margin-right: 10px;">🔍 FILTER:</div>
+               
+               <input type="text" id="filter_lot" class="form-input" placeholder="Lot No..." onkeyup="filterDeliveryGrid()" style="flex:1; color: #000000;">
+               
+               <input type="text" id="filter_count" class="form-input" placeholder="Count..." onkeyup="filterDeliveryGrid()" style="flex:1; color: #000000;">
+               
+               <input type="text" id="filter_brand" class="form-input" placeholder="Brand..." onkeyup="filterDeliveryGrid()" style="flex:1; color: #000000;">
+               
+               <input type="text" id="filter_loc" class="form-input" placeholder="Location..." onkeyup="filterDeliveryGrid()" style="flex:1; color: #000000;">
+               
+               <button onclick="clearDeliveryFilters()" class="btn btn-secondary" style="background: white; color: #3b82f6; font-weight: bold;">Clear</button>
+            </div>
+
+          <!-- DATA GRID -->
+          <div class="card" style="flex: 1; padding: 0; overflow: hidden; display: flex; flex-direction: column;">
+            <div class="table-container" style="flex: 1; overflow-y: auto;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead style="position: sticky; top: 0; background: white; z-index: 5; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                  <tr>
+                    <th style="padding: 12px; text-align: left; width: 15%;">LOT NO</th>
+                    <th style="padding: 12px; text-align: left; width: 15%;">BRAND & COUNT</th>
+                    <th style="padding: 12px; text-align: left; width: 15%;">COMPONENT</th>
+                    <th style="padding: 12px; text-align: left; width: 10%;">LOCATION</th>
+                    <th style="padding: 12px; text-align: center; width: 10%;">STOCK (Kg)</th>
+                    <th style="padding: 12px; text-align: center; width: 15%; background: #fee2e2; color: #991b1b; border-bottom: 2px solid #ef4444;">DELIVERY QTY</th>
+                    <th style="padding: 12px; text-align: center; width: 20%;">Current Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="deliveryGridBody">
+                  ${activeStockItems.length > 0 ? activeStockItems.map((item, index) => `
+                    <tr class="grid-row" data-lot="${item.lot.toLowerCase()}" data-brand="${item.brand.toLowerCase()}" data-count="${item.count.toLowerCase()}" data-loc="${(item.location || '').toLowerCase()}">
+                      <td style="padding: 8px 12px; font-weight: 600; color: #1e40af;">${item.lot}</td>
+                      <td style="padding: 8px 12px;">
+                        <div>${item.brand}</div>
+                        <div style="font-size: 11px; color: #64748b;">${item.count}</div>
+                      </td>
+                      <td style="padding: 8px 12px;">${item.component || '-'}</td>
+                      <td style="padding: 8px 12px;">${item.location || '-'}</td>
+                      <td style="padding: 8px 12px; text-align: center; font-weight: bold; font-size: 15px;">${item.balance.toFixed(2)}</td>
+                      <td style="padding: 6px; background: #fff1f2; text-align: center;">
+                        <input type="number" step="0.01" class="form-input delivery-input" 
+                          id="qty_${index}" 
+                          data-index="${index}"
+                          placeholder="0.00" 
+                          style="text-align: center; font-weight: bold; border: 2px solid #cbd5e1;"
+                          oninput="validateLiveStock(${index}, ${item.balance})"
+                          onkeydown="moveToNextInput(event, ${index})">
+                      </td>
+                      <td style="padding: 8px 12px; text-align: center; color: #64748b;" id="bal_${index}">
+                        ${item.balance.toFixed(2)}
+                      </td>
+                    </tr>
+                  `).join('') : '<tr><td colspan="7" style="text-align:center; padding: 20px;">No Stock Available</td></tr>'}
+                </tbody>
+              </table>
+            </div>
+            <div style="padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; text-align: right; font-weight: 600;">
+               Total Entries: <span id="total_entry_count">0</span> | Total Qty: <span id="total_entry_qty">0.00</span>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('mainContent').innerHTML = html;
+      document.getElementById('bulk_date').valueAsDate = new Date();
+    }
+
+    // 1. Calculate Stock from All Records
+    function calculateActiveStock() {
+      const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
+      const itemsMap = new Map();
+
+      transactionRecords.forEach(record => {
+        if (!record.lot) return;
+        // Grouping Key
+        const key = `${record.lot}|${record.count || ''}|${record.brand || ''}|${record.component || ''}|${record.location || ''}`;
+
+        if (!itemsMap.has(key)) {
+          itemsMap.set(key, {
+            ...record, // Keep original details
+            uniqueKey: key,
+            received: 0,
+            issued: 0,
+            balance: 0
+          });
+        }
+      });
+
+      itemsMap.forEach((item, key) => {
+        const [lot, count, brand, component, location] = key.split('|');
+        
+        const receiveRecords = transactionRecords.filter(r => 
+          (r.module === 'receive' || r.module === 'rereceive') &&
+          r.lot === lot && (r.count || '') === count && (r.brand || '') === brand && (r.component || '') === component && (r.location || '') === location
+        );
+        
+        const deliveryRecords = transactionRecords.filter(r => 
+          r.module === 'delivery' &&
+          r.lot === lot && (r.count || '') === count && (r.brand || '') === brand && (r.location || '') === location
+        );
+        
+        item.received = receiveRecords.reduce((sum, r) => sum + (parseFloat(r.received_qty) || 0), 0);
+        item.issued = deliveryRecords.reduce((sum, r) => sum + (parseFloat(r.issued_qty) || 0), 0);
+        item.balance = item.received - item.issued;
+      });
+
+      // Only items with stock > 0
+      activeStockItems = Array.from(itemsMap.values()).filter(i => i.balance > 0.01);
+    }
+
+    // 2. Filter Logic (CSS Based - Fast)
+    function filterDeliveryGrid() {
+      const fLot = document.getElementById('filter_lot').value.toLowerCase();
+      const fCount = document.getElementById('filter_count').value.toLowerCase();
+      const fBrand = document.getElementById('filter_brand').value.toLowerCase();
+      const fLoc = document.getElementById('filter_loc').value.toLowerCase();
+
+      const rows = document.querySelectorAll('.grid-row');
+      rows.forEach(row => {
+        const rLot = row.getAttribute('data-lot');
+        const rBrand = row.getAttribute('data-brand');
+        const rCount = row.getAttribute('data-count');
+        const rLoc = row.getAttribute('data-loc');
+
+        if (rLot.includes(fLot) && rBrand.includes(fBrand) && rCount.includes(fCount) && rLoc.includes(fLoc)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    function clearDeliveryFilters() {
+      document.getElementById('filter_lot').value = '';
+      document.getElementById('filter_count').value = '';
+      document.getElementById('filter_brand').value = '';
+      document.getElementById('filter_loc').value = '';
+      filterDeliveryGrid();
+    }
+
+    // 3. Live Validation & Balance Update
+    function validateLiveStock(index, maxStock) {
+      const input = document.getElementById(`qty_${index}`);
+      const balanceDisplay = document.getElementById(`bal_${index}`);
+      let qty = parseFloat(input.value);
+
+      if (isNaN(qty)) qty = 0;
+
+      if (qty > maxStock) {
+        input.style.borderColor = 'red';
+        input.style.backgroundColor = '#fee2e2';
+        balanceDisplay.innerText = "Exceeded!";
+        balanceDisplay.style.color = "red";
+      } else {
+        input.style.borderColor = '#3b82f6';
+        input.style.backgroundColor = '#fff';
+        const newBal = maxStock - qty;
+        balanceDisplay.innerText = newBal.toFixed(2);
+        balanceDisplay.style.color = newBal === 0 ? '#eab308' : '#64748b';
+      }
+      
+      updateTotalStats();
+    }
+    
+    // Update footer stats
+    function updateTotalStats() {
+       const inputs = document.querySelectorAll('.delivery-input');
+       let count = 0;
+       let totalQty = 0;
+       
+       inputs.forEach(input => {
+           const val = parseFloat(input.value);
+           if(val > 0) {
+               count++;
+               totalQty += val;
+           }
+       });
+       
+       document.getElementById('total_entry_count').innerText = count;
+       document.getElementById('total_entry_qty').innerText = totalQty.toFixed(2);
+    }
+    
+    // Enter key navigation
+    function moveToNextInput(event, index) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const nextInput = document.getElementById(`qty_${index + 1}`);
+        if (nextInput) {
+            nextInput.focus();
+        }
+      }
+    }
+
+    // 4. Save Function
+    async function handleBulkDeliverySubmit() {
+      const date = document.getElementById('bulk_date').value;
+      const issuedTo = document.getElementById('bulk_issued_to').value;
+      const remarks = document.getElementById('bulk_remarks').value;
+
+      if (!date || !issuedTo) {
+        showNotification('⚠️ Please enter Date and Issued To information.', 'error');
+        return;
+      }
+
+      // Collect data
+      const deliveriesToSave = [];
+      const inputs = document.querySelectorAll('.delivery-input');
+      let errorFound = false;
+
+      inputs.forEach(input => {
+        const qty = parseFloat(input.value);
+        if (qty > 0) {
+          const index = input.getAttribute('data-index');
+          const item = activeStockItems[index];
+
+          if (qty > item.balance) {
+             input.style.borderColor = 'red';
+             errorFound = true;
+          } else {
+             deliveriesToSave.push({
+               item: item,
+               qty: qty
+             });
+          }
+        }
+      });
+
+      if (errorFound) {
+        showNotification('❌ Some quantities exceed stock! Please check red boxes.', 'error');
+        return;
+      }
+
+      if (deliveriesToSave.length === 0) {
+        showNotification('⚠️ No quantities entered.', 'error');
+        return;
+      }
+
+      // Save Process
+      const submitBtn = document.getElementById('bulkSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+
+      let successCount = 0;
+
+      for (let data of deliveriesToSave) {
+        const item = data.item;
+        const qty = data.qty;
+
+        const recordData = {
+          id: 'DEL-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+          module: 'delivery',
+          
+          // Form Data
+          delivery_date: date,
+          issued_to: issuedTo,
+          remarks: remarks,
+          
+          // Item Data
+          lot: item.lot,
+          count: item.count,
+          type: item.type,
+          brand: item.brand,
+          component: item.component,
+          location: item.location,
+          
+          // Qty Data
+          issued_qty: qty,
+          unit_price: item.unit_price || 0,
+          total_amount: qty * (item.unit_price || 0),
+          balance_qty: item.balance - qty,
+          
+          // Other Meta
+          buyer: item.buyer || '',
+          lc_no: item.lc_no || '',
+          pi_no: item.pi_no || '',
+          year: item.year || '',
+          order_style: item.order_style || '',
+          transaction_date: new Date().toISOString()
+        };
+
+        await saveToFirebase(recordData);
+        successCount++;
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>💾 SAVE DELIVERIES</span>';
+
+      showNotification(`✅ Successfully saved ${successCount} items!`, 'success');
+      
+      // Refresh the page
+      renderDeliveryForm();
+    }
+    
+    function resetDeliveryForm() {
+       renderDeliveryForm();
+    }
+
+    // ==========================================
+    // DIRECT GRID DELIVERY LOGIC END
+    // ==========================================
+    
+    async function handleDeliverySubmit(event) {
+      event.preventDefault();
+      
+      if (!selectedDeliveryItem) {
+        showNotification('❌ Please select an item from the picker table first.', 'error');
+        return;
+      }
+      
+      const issuedQty = parseFloat(document.getElementById('del_issued_qty').value) || 0;
+      const balanceBefore = parseFloat(document.getElementById('del_balance_before').value) || 0;
+      
+      if (issuedQty > balanceBefore) {
+        showNotification('❌ Delivery quantity cannot exceed available balance!', 'error');
+        return;
+      }
+      
+      const submitBtn = document.getElementById('deliverySubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span> <span>Saving...</span>';
+      
+      const formData = {
+        id: 'DEL-' + Date.now(),
+        module: 'delivery',
+        lot: selectedDeliveryItem.lot,
+        count: selectedDeliveryItem.count,
+        type: selectedDeliveryItem.type,
+        brand: selectedDeliveryItem.brand,
+        component: selectedDeliveryItem.component,
+        delivery_date: document.getElementById('del_delivery_date').value,
+        issued_qty: issuedQty,
+        issued_to: document.getElementById('del_issued_to').value,
+        purpose: document.getElementById('del_purpose').value,
+        vehicle_gatepass: document.getElementById('del_vehicle_gatepass').value,
+        remarks: document.getElementById('del_remarks').value,
+        unit_price: parseFloat(document.getElementById('del_unit_price').value) || 0,
+        total_amount: parseFloat(document.getElementById('del_total_amount').value) || 0,
+        balance_qty: balanceBefore - issuedQty,
+        buyer: selectedDeliveryItem.buyer || '',
+        lc_no: selectedDeliveryItem.lc_no || '',
+        pi_no: selectedDeliveryItem.pi_no || '',
+        year: selectedDeliveryItem.year || '',
+        order_style: selectedDeliveryItem.order_style || '',
+        location: selectedDeliveryItem.location || '',
+        transaction_date: new Date().toISOString()
+      };
+      
+      const result = await saveToFirebase(formData);
+      
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>📤 Save Delivery</span>';
+      
+      if (result.isOk) {
+        showNotification('✅ Delivery entry saved successfully!', 'success');
+        resetDeliveryForm();
+      } else {
+        showNotification('❌ Failed to save delivery entry. Please try again.', 'error');
+      }
+    }
+    
+    function resetDeliveryForm() {
+      document.getElementById('deliveryForm').reset();
+      document.getElementById('del_delivery_date').valueAsDate = new Date();
+      document.getElementById('del_count').value = '';
+      document.getElementById('del_type').value = '';
+      document.getElementById('del_brand').value = '';
+      document.getElementById('del_balance_before').value = '0.00';
+      document.getElementById('del_unit_price').value = '0.00';
+      document.getElementById('del_total_amount').value = '0.00';
+    }
+    
+function renderStockLedger() {
+      const lotMap = new Map();
+      
+      const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
+      
+      transactionRecords.forEach(record => {
+        if (record.module !== 'receive' && record.module !== 'rereceive') return;
+        const lot = record.lot;
+        if (!lot) return;
+        
+        // =================================================================================
+        // পরিবর্তন: এখানে Key এর সাথে LC No, Price এবং Date যুক্ত করা হলো।
+        // ফলে একই লট হলেও যদি LC, রেট বা তারিখ আলাদা হয়, তবে আলাদা লাইনে শো করবে।
+        // =================================================================================
+        const key = `${lot}|${record.count || ''}|${record.brand || ''}|${record.component || ''}|${record.lc_no || ''}|${record.unit_price || 0}|${record.receive_date || ''}`;
+        
+        if (!lotMap.has(key)) {
+          lotMap.set(key, {
+            lc_no: record.lc_no || '',
+            pi_no: record.pi_no || '',
+            count: record.count || '',
+            type: record.type || '',
+            component: record.component || '',
+            brand: record.brand || '',
+            lot: lot,
+            receive_date: record.receive_date || '',
+            lc_qty: record.lc_qty || 0,
+            before_qty: 0,
+            received_qty: 0,
+            total_qty: 0,
+            issued_qty: 0,
+            balance_qty: 0,
+            buyer: record.buyer || '',
+            year: record.year || '',
+            order_style: record.order_style || '',
+            location: record.location || '',
+            row_col: record.row_col || '',
+            certification: record.certification || '',
+            unit_price: record.unit_price || 0,
+            last_transaction: record.transaction_date || '',
+            weight_cone: record.weight_cone || '',
+            receive_from: record.receive_from || '',
+            remarks: record.remarks || '',
+            total_amount: 0,
+            receive_amount: 0,
+            delivery_amount: 0,
+            tc_no: record.tc_no || '', // TC No সরাসরি সেট করা হলো
+            duration: '',
+            total_days: ''
+          });
+        }
+      });
+      
+      lotMap.forEach((lotData, key) => {
+        // Key ভেঙে ডাটা আলাদা করা হচ্ছে
+        const [lot, count, brand, component, lc_no, unit_price, receive_date] = key.split('|');
+        
+        // ১. রিসিভ রেকর্ড ফিল্টার (এখন অনেক বেশি স্পেসিফিক)
+        const receiveRecords = transactionRecords.filter(r => 
+          (r.module === 'receive' || r.module === 'rereceive') &&
+          r.lot === lot && 
+          (r.count || '') === count && 
+          (r.brand || '') === brand && 
+          (r.component || '') === component &&
+          (r.lc_no || '') === lc_no &&
+          (r.unit_price || 0) == unit_price &&
+          (r.receive_date || '') === receive_date
+        );
+        
+        // ২. ডেলিভারি রেকর্ড ফিল্টার
+        // ডেলিভারি সাধারণত লট ধরে হয়, তাই এখানে আমরা লট এবং এলসি ম্যাচ করার চেষ্টা করব
+        const deliveryRecords = transactionRecords.filter(r => 
+          r.module === 'delivery' &&
+          r.lot === lot && 
+          (r.count || '') === count && 
+          (r.brand || '') === brand &&
+          (r.lc_no || '') === lc_no // ডেলিভারিতে যদি LC উল্লেখ থাকে তবেই এই লাইন থেকে মাইনাস হবে
+        );
+        
+        lotData.received_qty = receiveRecords.reduce((sum, r) => sum + (parseFloat(r.received_qty) || 0), 0);
+        lotData.issued_qty = deliveryRecords.reduce((sum, r) => sum + (parseFloat(r.issued_qty) || 0), 0);
+        
+        lotData.receive_amount = receiveRecords.reduce((sum, r) => sum + (parseFloat(r.total_amount) || 0), 0);
+        lotData.delivery_amount = deliveryRecords.reduce((sum, r) => sum + (parseFloat(r.total_amount) || 0), 0);
+        
+        // লাস্ট ট্রানজেকশন ডেট আপডেট
+        let latestDate = lotData.receive_date; 
+        
+        receiveRecords.forEach(r => {
+           const d = r.receive_date || r.transaction_date;
+           if(d && new Date(d) > new Date(latestDate)) latestDate = d;
+        });
+        deliveryRecords.forEach(r => {
+           const d = r.delivery_date || r.transaction_date;
+           if(d && new Date(d) > new Date(latestDate)) latestDate = d;
+        });
+        lotData.last_transaction = latestDate;
+      });
+      
+      // FINAL CALCULATION LOOP
+      lotMap.forEach(lotData => {
+        lotData.total_qty = lotData.received_qty;
+        lotData.balance_qty = lotData.received_qty - lotData.issued_qty;
+        
+        // Total Amount = Balance * Rate
+        lotData.total_amount = lotData.balance_qty * lotData.unit_price; 
+        
+        // Auto Day Calculation
+        if (lotData.receive_date && lotData.balance_qty > 0.01) { 
+          const startDate = new Date(lotData.receive_date);
+          const today = new Date();
+          const diffTime = Math.abs(today - startDate);
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          lotData.total_days = diffDays.toString();
+          lotData.duration = diffDays + " Days";
+        } else {
+          lotData.total_days = "0";
+          lotData.duration = "Stock Out";
+        }
+      });
+      
+      // Sort by Date Descending (নতুন ডাটা আগে দেখাবে)
+      const stockData = Array.from(lotMap.values()).sort((a, b) => new Date(b.receive_date) - new Date(a.receive_date));
+      
+      const html = `
+        <div>
+          <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">📋 Stock Ledger</h1>
+          <p style="color: #64748b; margin-bottom: 24px;">Complete inventory with all 31 columns in exact serial order</p>
+          
+          <div class="card">
+            <div class="search-bar">
+              <input type="text" id="searchLot" class="search-input" placeholder="🔍 Search by LOT..." oninput="filterStockLedger()">
+              <input type="text" id="searchBrand" class="search-input" placeholder="🔍 Search by Brand..." oninput="filterStockLedger()">
+              <input type="text" id="searchCount" class="search-input" placeholder="🔍 Search by Count..." oninput="filterStockLedger()">
+              <input type="text" id="searchBuyer" class="search-input" placeholder="🔍 Search by Buyer..." oninput="filterStockLedger()">
+            </div>
+            
+            ${stockData.length > 0 ? `
+              <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 3000px;">
+                  <thead style="position: sticky; top: 0; z-index: 10; background: #1e40af; color: white;">
+                    <tr>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">1. L/C NO</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">2. PI No</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 100px;">3. YARN COUNT</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 100px;">4. YARN TYPE</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 150px;">5. YARN COMPONENT</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">6. BRAND NAME</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px; background: #2563eb;">7. LOT#</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">8. RECEIVING DATE</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 100px;">9. L/C QTY(Kg)</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">10. BEFORE QTY (Kg)</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 130px; background: #10b981;">11. RECEIVED QTY (Kg)</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 110px; background: #10b981;">12. TOTAL QTY (Kg)</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px; background: #ef4444;">13. ISSUED QTY (Kg)</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 130px; background: #3b82f6;">14. BALANCE QTY (Kg)</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">15. BUYER NAME</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 80px;">16. YEARS</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">17. ORDER / STYLE#</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 100px;">18. LOCATION</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 150px;">19. LOCATION ROW & COLUMN</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">20. CERTIFICATION</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 140px;">21. Unit Price In USD (KG)</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 150px;">22. Last Transaction Date</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">23. Weight & Cone</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">24. Receive From</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 150px;">25. REMARKS</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">26. Total Amount</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">27. Receive Amount</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">28. Delivery Amount</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 120px;">29. Yarn TC No</th>
+                      <th style="padding: 12px 8px; text-align: left; border-right: 1px solid rgba(255,255,255,0.2); white-space: nowrap; min-width: 100px;">30. DURATION</th>
+                      <th style="padding: 12px 8px; text-align: left; white-space: nowrap; min-width: 100px;">31. TOTAL DAYS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="stockTableBody">
+                    ${stockData.map(item => `
+                      <tr data-lot="${item.lot}" data-brand="${item.brand}" data-count="${item.count}" data-buyer="${item.buyer}" style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.lc_no || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.pi_no || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.count || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.type || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.component || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.brand || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; background: #eff6ff;"><strong>${item.lot}</strong></td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.receive_date || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right;">${item.lc_qty.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right;">${item.before_qty.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right; background: #f0fdf4; font-weight: 600;">${item.received_qty.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right; background: #f0fdf4; font-weight: 600;">${item.total_qty.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right; background: #fef2f2; font-weight: 600;">${item.issued_qty.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right; background: #dbeafe; font-weight: 700; color: ${item.balance_qty > 0 ? '#1e40af' : '#dc2626'};">${item.balance_qty.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.buyer || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.year || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.order_style || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.location || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.row_col || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.certification || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right;">${item.unit_price.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${new Date(item.last_transaction).toLocaleDateString()}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.weight_cone || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.receive_from || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.remarks || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right; font-weight: 600;">${item.total_amount.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right;">${item.receive_amount.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9; text-align: right;">${item.delivery_amount.toFixed(2)}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.tc_no || '-'}</td>
+                        <td style="padding: 10px 8px; border-right: 1px solid #f1f5f9;">${item.duration || '-'}</td>
+                        <td style="padding: 10px 8px;">${item.total_days || '-'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : `
+              <div class="empty-state">
+                <div class="empty-state-icon">📦</div>
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">No Stock Records</div>
+                <div>Start by creating receive entries to see stock data here</div>
+              </div>
+            `}
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('mainContent').innerHTML = html;
+    }
+    
+    function filterStockLedger() {
+      const searchLot = document.getElementById('searchLot').value.toLowerCase();
+      const searchBrand = document.getElementById('searchBrand').value.toLowerCase();
+      const searchCount = document.getElementById('searchCount').value.toLowerCase();
+      const searchBuyer = document.getElementById('searchBuyer').value.toLowerCase();
+      
+      const rows = document.querySelectorAll('#stockTableBody tr');
+      
+      rows.forEach(row => {
+        const lot = row.dataset.lot.toLowerCase();
+        const brand = row.dataset.brand.toLowerCase();
+        const count = row.dataset.count.toLowerCase();
+        const buyer = row.dataset.buyer.toLowerCase();
+        
+        const matchesLot = lot.includes(searchLot);
+        const matchesBrand = brand.includes(searchBrand);
+        const matchesCount = count.includes(searchCount);
+        const matchesBuyer = buyer.includes(searchBuyer);
+        
+        if (matchesLot && matchesBrand && matchesCount && matchesBuyer) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+    
+    let dashboardFilteredData = [];
+    
+function applyDashboardFilters() {
+      const filters = {
+        lot: document.getElementById('dash_filter_lot')?.value || '',
+        count: document.getElementById('dash_filter_count')?.value || '',
+        brand: document.getElementById('dash_filter_brand')?.value || '',
+        // Buyer ফিল্টার বাদ দেওয়া হয়েছে, Module যোগ করা হয়েছে
+        module: document.getElementById('dash_filter_module')?.value || '',
+        location: document.getElementById('dash_filter_location')?.value || '',
+        fromDate: document.getElementById('dash_filter_from_date')?.value || '',
+        toDate: document.getElementById('dash_filter_to_date')?.value || ''
+      };
+      
+      const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
+      
+      const filteredRecords = transactionRecords.filter(record => {
+        if (filters.lot && record.lot !== filters.lot) return false;
+        if (filters.count && record.count !== filters.count) return false;
+        if (filters.brand && record.brand !== filters.brand) return false;
+        
+        // Transaction Type Filter Logic
+        if (filters.module && record.module !== filters.module) return false;
+        
+        if (filters.location && record.location !== filters.location) return false;
+        
+        if (filters.fromDate || filters.toDate) {
+          const recordDate = record.receive_date || record.delivery_date || record.transaction_date;
+          if (!recordDate) return false;
+          
+          const recDate = new Date(recordDate);
+          if (filters.fromDate && recDate < new Date(filters.fromDate)) return false;
+          if (filters.toDate && recDate > new Date(filters.toDate)) return false;
+        }
+        
+        return true;
+      });
+      
+      dashboardFilteredData = filteredRecords;
+      
+      // Update stats
+      const receiveRecords = filteredRecords.filter(r => r.module === 'receive' || r.module === 'rereceive');
+      const deliveryRecords = filteredRecords.filter(r => r.module === 'delivery');
+      
+      const totalReceived = receiveRecords.reduce((sum, r) => sum + (r.received_qty || 0), 0);
+      const totalDelivered = deliveryRecords.reduce((sum, r) => sum + (r.issued_qty || 0), 0);
+      const currentStock = totalReceived - totalDelivered;
+      const uniqueLots = new Set(receiveRecords.map(r => r.lot)).size;
+      
+      // Update stat cards
+      const statCards = document.querySelectorAll('.stat-value');
+      if (statCards[0]) statCards[0].textContent = totalReceived.toFixed(2);
+      if (statCards[1]) statCards[1].textContent = totalDelivered.toFixed(2);
+      if (statCards[2]) statCards[2].textContent = currentStock.toFixed(2);
+      if (statCards[3]) statCards[3].textContent = uniqueLots;
+      
+      // Update table
+      const recentTransactions = [...filteredRecords]
+        .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date))
+        .slice(0, 10);
+      
+      const tbody = document.querySelector('#dashboardTableBody');
+      if (tbody) {
+        if (recentTransactions.length > 0) {
+          tbody.innerHTML = recentTransactions.map(record => `
+            <tr>
+              <td>${new Date(record.transaction_date).toLocaleDateString()}</td>
+              <td>
+                <span class="badge badge-${record.module}">${
+                  record.module === 'receive' ? 'Receive' : 
+                  record.module === 'rereceive' ? 'Re-Receive' : 'Delivery'
+                }</span>
+              </td>
+              <td><strong>${record.lot || '-'}</strong></td>
+              <td>${record.brand || '-'}</td>
+              <td>${record.count || '-'}</td>
+              <td><strong>${record.received_qty || record.issued_qty || 0} Kg</strong></td>
+              <td>${record.buyer || record.issued_to || '-'}</td>
+            </tr>
+          `).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: #64748b;">No matching transactions found</td></tr>';
+        }
+      }
+      
+      showNotification(`✅ Filters applied: ${filteredRecords.length} transactions found`, 'success');
+    }
+    
+    function resetDashboardFilters() {
+      document.getElementById('dash_filter_lot').value = '';
+      document.getElementById('dash_filter_count').value = '';
+      document.getElementById('dash_filter_brand').value = '';
+      // Buyer এর পরিবর্তে Module রিসেট
+      document.getElementById('dash_filter_module').value = '';
+      document.getElementById('dash_filter_location').value = '';
+      document.getElementById('dash_filter_from_date').value = '';
+      document.getElementById('dash_filter_to_date').value = '';
+      
+      dashboardFilteredData = [];
+      renderCurrentPage();
+      showNotification('✅ All filters cleared', 'success');
+    }
+    
+    function exportDashboardToExcel() {
+      const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
+      const dataToExport = dashboardFilteredData.length > 0 ? dashboardFilteredData : transactionRecords;
+      
+      if (dataToExport.length === 0) {
+        showNotification('❌ No data to export', 'error');
+        return;
+      }
+      
+      let csvContent = '';
+      
+      const headers = [
+        'Transaction Date', 'Module', 'LOT#', 'Brand', 'Count', 'Type', 'Component',
+        'Received Qty (Kg)', 'Issued Qty (Kg)', 'Buyer/Issued To', 'Location',
+        'L/C No', 'PI No', 'Year', 'Order/Style', 'Unit Price', 'Total Amount',
+        'Receive From', 'Vehicle/Gate Pass', 'Purpose', 'Remarks'
+      ];
+      
+      csvContent += headers.join(',') + '\n';
+      
+      dataToExport.forEach(row => {
+        const rowData = [
+          new Date(row.transaction_date).toLocaleDateString(),
+          row.module || '',
+          row.lot || '',
+          row.brand || '',
+          row.count || '',
+          row.type || '',
+          row.component || '',
+          row.received_qty || 0,
+          row.issued_qty || 0,
+          row.buyer || row.issued_to || '',
+          row.location || '',
+          row.lc_no || '',
+          row.pi_no || '',
+          row.year || '',
+          row.order_style || '',
+          row.unit_price || 0,
+          row.total_amount || 0,
+          row.receive_from || '',
+          row.vehicle_gatepass || '',
+          row.purpose || '',
+          row.remarks || ''
+        ];
+        
+        const formattedRow = rowData.map(value => {
+          if (value === null || value === undefined) return '';
+          const stringValue = String(value);
+          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+            return '"' + stringValue.replace(/"/g, '""') + '"';
+          }
+          return stringValue;
+        });
+        
+        csvContent += formattedRow.join(',') + '\n';
+      });
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filename = `Dashboard_Report_${timestamp}.csv`;
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showNotification(`✅ ${filename} downloaded successfully! (${dataToExport.length} records)`, 'success');
+    }
+    
+    let currentReportType = null;
+    
+    function renderReports() {
+      const html = `
+        <div>
+          <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">📊 REPORTS</h1>
+          <p style="color: #64748b; margin-bottom: 24px;">Download comprehensive Excel reports with advanced filters</p>
+          
+          <div class="card">
+            <div style="display: grid; gap: 12px;">
+              <div class="report-item" onclick="openReportFilter('daily_transaction')">
+                <span class="report-number">1.</span>
+                <span class="report-name">Daily Transaction Report</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+              
+              <div class="report-item" onclick="openReportFilter('stock_ledger')">
+                <span class="report-number">2.</span>
+                <span class="report-name">Stock Ledger Report</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+              
+              <div class="report-item" onclick="openReportFilter('rereceive')">
+                <span class="report-number">3.</span>
+                <span class="report-name">Re-Receive Report</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+              
+              <div class="report-item" onclick="openReportFilter('delivery')">
+                <span class="report-number">4.</span>
+                <span class="report-name">Delivery Report</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+              
+              <div class="report-item" onclick="openReportFilter('lot_wise')">
+                <span class="report-number">5.</span>
+                <span class="report-name">Lot-wise Stock Summary</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+              
+              <div class="report-item" onclick="openReportFilter('year_wise')">
+                <span class="report-number">6.</span>
+                <span class="report-name">Year-wise Stock Summary</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+              
+              <div class="report-item" onclick="openReportFilter('buyer_wise')">
+                <span class="report-number">7.</span>
+                <span class="report-name">Buyer-wise Consumption</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+              
+              <div class="report-item" onclick="openReportFilter('location_wise')">
+                <span class="report-number">8.</span>
+                <span class="report-name">Location-wise Stock Report</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+              
+              <div class="report-item" onclick="openReportFilter('item_transaction')">
+                <span class="report-number">9.</span>
+                <span class="report-name">Item-wise Transaction & Value Report</span>
+                <button class="report-download-btn">📥 Download</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('mainContent').innerHTML = html;
+    }
+    
+    function openReportFilter(reportType) {
+      currentReportType = reportType;
+      
+      const reportTitles = {
+        'daily_transaction': 'Daily Transaction Report',
+        'stock_ledger': 'Stock Ledger Report',
+        'rereceive': 'Re-Receive Report',
+        'delivery': 'Delivery Report',
+        'lot_wise': 'Lot-wise Stock Summary',
+        'year_wise': 'Year-wise Stock Summary',
+        'buyer_wise': 'Buyer-wise Consumption',
+        'location_wise': 'Location-wise Stock Report',
+        'item_transaction': 'Item-wise Transaction & Value Report'
+      };
+      
+      const needsDateRange = ['daily_transaction', 'rereceive', 'delivery'];
+      const needsTransactionType = reportType === 'daily_transaction';
+      
+      const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
+      
+      const lots = [...new Set(transactionRecords.map(r => r.lot).filter(Boolean))].sort();
+      const counts = [...new Set(transactionRecords.map(r => r.count).filter(Boolean))].sort();
+      const components = [...new Set(transactionRecords.map(r => r.component).filter(Boolean))].sort();
+      const brands = [...new Set(transactionRecords.map(r => r.brand).filter(Boolean))].sort();
+      const locations = [...new Set(transactionRecords.map(r => r.location).filter(Boolean))].sort();
+      
+      const html = `
+        <div>
+          <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+            <button onclick="navigateTo('reports')" class="btn btn-secondary" style="padding: 8px 16px;">
+              ← Back to Reports
+            </button>
+            <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin: 0;">
+              Filter for: ${reportTitles[reportType]}
+            </h1>
+          </div>
+          
+          <div class="card">
+            <form id="reportFilterForm" onsubmit="downloadExcelReport(event)">
+              <div class="form-section">
+                <div class="section-title">🔍 Universal Filters</div>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label class="form-label" for="filter_lot">LOT Number</label>
+                    <select id="filter_lot" class="form-select">
+                      <option value="">All LOTs</option>
+                      ${lots.map(lot => `<option value="${lot}">${lot}</option>`).join('')}
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label class="form-label" for="filter_count">COUNT</label>
+                    <select id="filter_count" class="form-select">
+                      <option value="">All Counts</option>
+                      ${counts.map(count => `<option value="${count}">${count}</option>`).join('')}
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label class="form-label" for="filter_component">COMPOSITION</label>
+                    <select id="filter_component" class="form-select">
+                      <option value="">All Compositions</option>
+                      ${components.map(comp => `<option value="${comp}">${comp}</option>`).join('')}
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label class="form-label" for="filter_brand">BRAND</label>
+                    <select id="filter_brand" class="form-select">
+                      <option value="">All Brands</option>
+                      ${brands.map(brand => `<option value="${brand}">${brand}</option>`).join('')}
+                    </select>
+                  </div>
+                  
+                  <div class="form-group">
+                    <label class="form-label" for="filter_location">GODOWN LOCATION</label>
+                    <select id="filter_location" class="form-select">
+                      <option value="">All Locations</option>
+                      ${locations.map(loc => `<option value="${loc}">${loc}</option>`).join('')}
+                    </select>
+                  </div>
+                </div>
+              </div>
+              
+              ${needsDateRange ? `
+                <div class="form-section">
+                  <div class="section-title">📅 Date Range</div>
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label class="form-label" for="filter_from_date">From Date</label>
+                      <input type="date" id="filter_from_date" class="form-input">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label" for="filter_to_date">To Date</label>
+                      <input type="date" id="filter_to_date" class="form-input">
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+              
+              ${needsTransactionType ? `
+                <div class="form-section">
+                  <div class="section-title">📋 Transaction Type</div>
+                  <div style="display: flex; gap: 24px; padding: 12px 0;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="radio" name="transaction_type" value="receive" style="width: 18px; height: 18px; cursor: pointer;">
+                      <span style="font-size: 15px; font-weight: 500;">Receive</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="radio" name="transaction_type" value="delivery" style="width: 18px; height: 18px; cursor: pointer;">
+                      <span style="font-size: 15px; font-weight: 500;">Delivery</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                      <input type="radio" name="transaction_type" value="both" checked style="width: 18px; height: 18px; cursor: pointer;">
+                      <span style="font-size: 15px; font-weight: 500;">Both</span>
+                    </label>
+                  </div>
+                </div>
+              ` : ''}
+              
+              <div style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                <button type="button" class="btn btn-secondary" onclick="navigateTo('reports')">Cancel</button>
+                <button type="submit" class="btn btn-success" style="font-size: 16px; padding: 12px 32px;">
+                   DOWNLOAD EXCEL
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('mainContent').innerHTML = html;
+    }
+    
+    function downloadExcelReport(event) {
+      event.preventDefault();
+      
+      const filters = {
+        lot: document.getElementById('filter_lot')?.value || '',
+        count: document.getElementById('filter_count')?.value || '',
+        component: document.getElementById('filter_component')?.value || '',
+        brand: document.getElementById('filter_brand')?.value || '',
+        location: document.getElementById('filter_location')?.value || '',
+        fromDate: document.getElementById('filter_from_date')?.value || '',
+        toDate: document.getElementById('filter_to_date')?.value || '',
+        transactionType: document.querySelector('input[name="transaction_type"]:checked')?.value || 'both'
+      };
+      
+      const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
+      
+      let filteredRecords = transactionRecords.filter(record => {
+        if (filters.lot && record.lot !== filters.lot) return false;
+        if (filters.count && record.count !== filters.count) return false;
+        if (filters.component && record.component !== filters.component) return false;
+        if (filters.brand && record.brand !== filters.brand) return false;
+        if (filters.location && record.location !== filters.location) return false;
+        
+        if (filters.fromDate || filters.toDate) {
+          const recordDate = record.receive_date || record.delivery_date || record.transaction_date;
+          if (!recordDate) return false;
+          
+          const recDate = new Date(recordDate);
+          if (filters.fromDate && recDate < new Date(filters.fromDate)) return false;
+          if (filters.toDate && recDate > new Date(filters.toDate)) return false;
+        }
+        
+        if (filters.transactionType !== 'both') {
+          if (filters.transactionType === 'receive' && record.module === 'delivery') return false;
+          if (filters.transactionType === 'delivery' && (record.module === 'receive' || record.module === 'rereceive')) return false;
+        }
+        
+        return true;
+      });
+      
+      let reportData = [];
+      
+      switch(currentReportType) {
+        case 'daily_transaction':
+        case 'rereceive':
+        case 'delivery':
+          reportData = filteredRecords;
+          break;
+          
+        case 'stock_ledger':
+        case 'lot_wise':
+          reportData = generateLotWiseData(filteredRecords);
+          break;
+          
+        case 'year_wise':
+          reportData = generateYearWiseData(filteredRecords);
+          break;
+          
+        case 'buyer_wise':
+          reportData = generateBuyerWiseData(filteredRecords);
+          break;
+          
+        case 'location_wise':
+          reportData = generateLocationWiseData(filteredRecords);
+          break;
+          
+        case 'item_transaction':
+          reportData = generateItemTransactionData(filteredRecords);
+          break;
+      }
+      
+      generateExcelFile(reportData, currentReportType);
+    }
+    
+    function generateLotWiseData(records) {
+      const lotMap = new Map();
+      
+      records.forEach(record => {
+        if (record.module !== 'receive' && record.module !== 'rereceive') return;
+        const lot = record.lot;
+        if (!lot) return;
+        
+        const key = `${lot}|${record.count || ''}|${record.brand || ''}|${record.component || ''}`;
+        
+        if (!lotMap.has(key)) {
+          lotMap.set(key, {
+            lc_no: record.lc_no || '',
+            pi_no: record.pi_no || '',
+            count: record.count || '',
+            type: record.type || '',
+            component: record.component || '',
+            brand: record.brand || '',
+            lot: lot,
+            receive_date: record.receive_date || '',
+            lc_qty: record.lc_qty || 0,
+            before_qty: 0,
+            received_qty: 0,
+            total_qty: 0,
+            issued_qty: 0,
+            balance_qty: 0,
+            buyer: record.buyer || '',
+            year: record.year || '',
+            order_style: record.order_style || '',
+            location: record.location || '',
+            row_col: record.row_col || '',
+            certification: record.certification || '',
+            unit_price: record.unit_price || 0,
+            last_transaction: record.transaction_date || '',
+            weight_cone: record.weight_cone || '',
+            receive_from: record.receive_from || '',
+            remarks: record.remarks || '',
+            total_amount: 0,
+            receive_amount: 0,
+            delivery_amount: 0,
+            tc_no: '',
+            duration: '',
+            total_days: ''
+          });
+        }
+      });
+      
+      lotMap.forEach((lotData, key) => {
+        const [lot, count, brand, component] = key.split('|');
+        
+        const receiveRecords = records.filter(r => 
+          (r.module === 'receive' || r.module === 'rereceive') &&
+          r.lot === lot && (r.count || '') === count && (r.brand || '') === brand && (r.component || '') === component
+        );
+        
+        const deliveryRecords = records.filter(r => 
+          r.module === 'delivery' &&
+          r.lot === lot && (r.count || '') === count && (r.brand || '') === brand
+        );
+        
+        lotData.received_qty = receiveRecords.reduce((sum, r) => sum + (parseFloat(r.received_qty) || 0), 0);
+        lotData.issued_qty = deliveryRecords.reduce((sum, r) => sum + (parseFloat(r.issued_qty) || 0), 0);
+        lotData.receive_amount = receiveRecords.reduce((sum, r) => sum + (parseFloat(r.total_amount) || 0), 0);
+        lotData.delivery_amount = deliveryRecords.reduce((sum, r) => sum + (parseFloat(r.total_amount) || 0), 0);
+        
+        lotData.total_qty = lotData.received_qty;
+        lotData.balance_qty = lotData.received_qty - lotData.issued_qty;
+        lotData.total_amount = lotData.receive_amount;
+        
+        receiveRecords.forEach(r => {
+          if (!lotData.receive_date || new Date(r.receive_date) < new Date(lotData.receive_date)) {
+            lotData.receive_date = r.receive_date;
+          }
+          if (new Date(r.transaction_date) > new Date(lotData.last_transaction)) {
+            lotData.last_transaction = r.transaction_date;
+          }
+        });
+      });
+      
+      return Array.from(lotMap.values());
+    }
+    
+    function generateYearWiseData(records) {
+      const yearMap = new Map();
+      
+      records.forEach(record => {
+        const year = record.year || 'Unknown';
+        
+        if (!yearMap.has(year)) {
+          yearMap.set(year, {
+            year: year,
+            received_qty: 0,
+            issued_qty: 0,
+            balance_qty: 0,
+            total_lots: new Set()
+          });
+        }
+        
+        const yearData = yearMap.get(year);
+        
+        if (record.module === 'receive' || record.module === 'rereceive') {
+          yearData.received_qty += record.received_qty || 0;
+          if (record.lot) yearData.total_lots.add(record.lot);
+        } else if (record.module === 'delivery') {
+          yearData.issued_qty += record.issued_qty || 0;
+        }
+      });
+      
+      yearMap.forEach(yearData => {
+        yearData.balance_qty = yearData.received_qty - yearData.issued_qty;
+        yearData.lot_count = yearData.total_lots.size;
+        delete yearData.total_lots;
+      });
+      
+      return Array.from(yearMap.values());
+    }
+    
+    function generateBuyerWiseData(records) {
+      const buyerMap = new Map();
+      
+      records.forEach(record => {
+        const buyer = record.buyer || record.issued_to || 'Unknown';
+        
+        if (!buyerMap.has(buyer)) {
+          buyerMap.set(buyer, {
+            buyer: buyer,
+            received_qty: 0,
+            issued_qty: 0,
+            balance_qty: 0,
+            total_lots: new Set()
+          });
+        }
+        
+        const buyerData = buyerMap.get(buyer);
+        
+        if (record.module === 'receive' || record.module === 'rereceive') {
+          buyerData.received_qty += record.received_qty || 0;
+          if (record.lot) buyerData.total_lots.add(record.lot);
+        } else if (record.module === 'delivery') {
+          buyerData.issued_qty += record.issued_qty || 0;
+        }
+      });
+      
+      buyerMap.forEach(buyerData => {
+        buyerData.balance_qty = buyerData.received_qty - buyerData.issued_qty;
+        buyerData.lot_count = buyerData.total_lots.size;
+        delete buyerData.total_lots;
+      });
+      
+      return Array.from(buyerMap.values());
+    }
+    
+    function generateLocationWiseData(records) {
+      const locationMap = new Map();
+      
+      records.forEach(record => {
+        const location = record.location || 'Unknown';
+        
+        if (!locationMap.has(location)) {
+          locationMap.set(location, {
+            location: location,
+            received_qty: 0,
+            issued_qty: 0,
+            balance_qty: 0,
+            total_lots: new Set()
+          });
+        }
+        
+        const locationData = locationMap.get(location);
+        
+        if (record.module === 'receive' || record.module === 'rereceive') {
+          locationData.received_qty += record.received_qty || 0;
+          if (record.lot) locationData.total_lots.add(record.lot);
+        } else if (record.module === 'delivery') {
+          locationData.issued_qty += record.issued_qty || 0;
+        }
+      });
+      
+      locationMap.forEach(locationData => {
+        locationData.balance_qty = locationData.received_qty - locationData.issued_qty;
+        locationData.lot_count = locationData.total_lots.size;
+        delete locationData.total_lots;
+      });
+      
+      return Array.from(locationMap.values());
+    }
+    
+    function generateItemTransactionData(records) {
+      const itemMap = new Map();
+      
+      records.forEach(record => {
+        if (!record.lot) return;
+        
+        const key = `${record.lot}|${record.count || ''}|${record.brand || ''}|${record.component || ''}`;
+        
+        if (!itemMap.has(key)) {
+          itemMap.set(key, {
+            lot: record.lot,
+            count: record.count || '',
+            brand: record.brand || '',
+            component: record.component || '',
+            type: record.type || '',
+            lc_no: record.lc_no || '',
+            pi_no: record.pi_no || '',
+            buyer: record.buyer || '',
+            location: record.location || '',
+            unit_price: 0,
+            received_qty: 0,
+            received_value: 0,
+            issued_qty: 0,
+            issued_value: 0,
+            balance_qty: 0,
+            balance_value: 0,
+            receive_date: '',
+            last_delivery_date: '',
+            issued_to: '',
+            total_receive_transactions: 0,
+            total_delivery_transactions: 0
+          });
+        }
+        
+        const itemData = itemMap.get(key);
+        
+        if (record.module === 'receive' || record.module === 'rereceive') {
+          itemData.received_qty += parseFloat(record.received_qty) || 0;
+          itemData.received_value += parseFloat(record.total_amount) || 0;
+          itemData.total_receive_transactions += 1;
+          
+          if (!itemData.receive_date || new Date(record.receive_date) < new Date(itemData.receive_date)) {
+            itemData.receive_date = record.receive_date;
+          }
+          
+          if (record.unit_price && record.unit_price > 0) {
+            itemData.unit_price = record.unit_price;
+          }
+        } else if (record.module === 'delivery') {
+          itemData.issued_qty += parseFloat(record.issued_qty) || 0;
+          itemData.issued_value += parseFloat(record.total_amount) || 0;
+          itemData.total_delivery_transactions += 1;
+          
+          if (!itemData.last_delivery_date || new Date(record.delivery_date) > new Date(itemData.last_delivery_date)) {
+            itemData.last_delivery_date = record.delivery_date;
+            itemData.issued_to = record.issued_to || '';
+          }
+        }
+      });
+      
+      itemMap.forEach(itemData => {
+        itemData.balance_qty = itemData.received_qty - itemData.issued_qty;
+        itemData.balance_value = itemData.balance_qty * itemData.unit_price;
+      });
+      
+      return Array.from(itemMap.values());
+    }
+    
+    function generateExcelFile(data, reportType) {
+      if (data.length === 0) {
+        showNotification('❌ No data available for the selected filters', 'error');
+        return;
+      }
+      
+      let csvContent = '';
+      
+      let headers = [];
+      
+      if (reportType === 'year_wise') {
+        headers = ['YEAR', 'RECEIVED QTY (Kg)', 'ISSUED QTY (Kg)', 'BALANCE QTY (Kg)', 'TOTAL LOTS'];
+      } else if (reportType === 'buyer_wise') {
+        headers = ['BUYER NAME', 'RECEIVED QTY (Kg)', 'ISSUED QTY (Kg)', 'BALANCE QTY (Kg)', 'TOTAL LOTS'];
+      } else if (reportType === 'location_wise') {
+        headers = ['LOCATION', 'RECEIVED QTY (Kg)', 'ISSUED QTY (Kg)', 'BALANCE QTY (Kg)', 'TOTAL LOTS'];
+      } else if (reportType === 'item_transaction') {
+        headers = [
+          'LOT#', 'YARN COUNT', 'BRAND NAME', 'YARN COMPONENT', 'YARN TYPE', 'L/C NO', 'PI NO', 
+          'BUYER NAME', 'LOCATION', 'UNIT PRICE (USD/Kg)', 'RECEIVE DATE', 'LAST DELIVERY DATE',
+          'RECEIVED QTY (Kg)', 'RECEIVED VALUE (USD)', 'ISSUED QTY (Kg)', 'ISSUED VALUE (USD)', 
+          'BALANCE QTY (Kg)', 'BALANCE VALUE (USD)', 'ISSUED TO', 'TOTAL RECEIVE TRANSACTIONS', 
+          'TOTAL DELIVERY TRANSACTIONS'
+        ];
+      } else {
+        headers = [
+          'L/C NO', 'PI No', 'YARN COUNT', 'YARN TYPE', 'YARN COMPONENT', 'BRAND NAME', 'LOT#',
+          'RECEIVING DATE', 'L/C QTY(Kg)', 'BEFORE QTY (Kg)', 'RECEIVED QTY (Kg)', 'TOTAL QTY (Kg)',
+          'ISSUED QTY (Kg)', 'BALANCE QTY (Kg)', 'BUYER NAME', 'YEARS', 'ORDER / STYLE#', 'LOCATION',
+          'LOCATION ROW & COLUMN', 'CERTIFICATION', 'Unit Price In USD (KG)', 'Last Transaction Date',
+          'Weight & Cone', 'Receive From', 'REMARKS', 'Total Amount', 'Receive Amount', 'Delivery Amount',
+          'Yarn TC No', 'DURATION', 'TOTAL DAYS'
+        ];
+      }
+      
+      csvContent += headers.join(',') + '\n';
+      
+      data.forEach(row => {
+        let rowData = [];
+        
+        if (reportType === 'year_wise') {
+          rowData = [row.year, row.received_qty, row.issued_qty, row.balance_qty, row.lot_count];
+        } else if (reportType === 'buyer_wise') {
+          rowData = [row.buyer, row.received_qty, row.issued_qty, row.balance_qty, row.lot_count];
+        } else if (reportType === 'location_wise') {
+          rowData = [row.location, row.received_qty, row.issued_qty, row.balance_qty, row.lot_count];
+        } else if (reportType === 'item_transaction') {
+          rowData = [
+            row.lot || '', row.count || '', row.brand || '', row.component || '', row.type || '',
+            row.lc_no || '', row.pi_no || '', row.buyer || '', row.location || '',
+            parseFloat(row.unit_price || 0).toFixed(2), row.receive_date || '', row.last_delivery_date || '',
+            parseFloat(row.received_qty || 0).toFixed(2), parseFloat(row.received_value || 0).toFixed(2),
+            parseFloat(row.issued_qty || 0).toFixed(2), parseFloat(row.issued_value || 0).toFixed(2),
+            parseFloat(row.balance_qty || 0).toFixed(2), parseFloat(row.balance_value || 0).toFixed(2),
+            row.issued_to || '', row.total_receive_transactions || 0, row.total_delivery_transactions || 0
+          ];
+        } else {
+          rowData = [
+            row.lc_no || '', row.pi_no || '', row.count || '', row.type || '', row.component || '',
+            row.brand || '', row.lot || '', row.receive_date || '', row.lc_qty || 0, row.before_qty || 0,
+            row.received_qty || 0, row.total_qty || 0, row.issued_qty || 0, row.balance_qty || 0,
+            row.buyer || '', row.year || '', row.order_style || '', row.location || '', row.row_col || '',
+            row.certification || '', row.unit_price || 0, row.last_transaction || '', row.weight_cone || '',
+            row.receive_from || '', row.remarks || '', row.total_amount || 0, row.receive_amount || 0,
+            row.delivery_amount || 0, row.tc_no || '', row.duration || '', row.total_days || ''
+          ];
+        }
+        
+        const formattedRow = rowData.map(value => {
+          if (value === null || value === undefined) return '';
+          const stringValue = String(value);
+          if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+            return '"' + stringValue.replace(/"/g, '""') + '"';
+          }
+          return stringValue;
+        });
+        
+        csvContent += formattedRow.join(',') + '\n';
+      });
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      
+      const reportNames = {
+        'daily_transaction': 'Daily_Transaction_Report',
+        'stock_ledger': 'Stock_Ledger_Report',
+        'rereceive': 'Re_Receive_Report',
+        'delivery': 'Delivery_Report',
+        'lot_wise': 'Lot_Wise_Stock_Summary',
+        'year_wise': 'Year_Wise_Stock_Summary',
+        'buyer_wise': 'Buyer_Wise_Consumption',
+        'location_wise': 'Location_Wise_Stock_Report',
+        'item_transaction': 'Item_Transaction_Value_Report'
+      };
+      
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const filename = `${reportNames[currentReportType]}_${timestamp}.csv`;
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showNotification(`✅ ${filename} downloaded successfully! (${data.length} records)`, 'success');
+    }
+    
+    function showNotification(message, type) {
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        animation: slideIn 0.3s ease-out;
+        background: ${type === 'success' ? '#10b981' : '#ef4444'};
+        color: white;
+      `;
+      notification.textContent = message;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out';
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+    
+    // Auto-Run Logic Removed - Waiting for Firebase Event
+    // ==========================================
+    // CALCULATOR LOGIC START
+    // ==========================================
+    
+    function renderCalculator() {
+      const html = `
+        <div>
+          <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">🧮 Yarn Calculator</h1>
+          <p style="color: #64748b; margin-bottom: 24px;">GMS COMPOSITE KNITTING IND LTD</p>
+          
+          <div class="card" style="max-width: 600px;">
+            <div class="form-section">
+                <div class="section-title">Input Details</div>
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label class="form-label">Yarn Quantity (Kg):</label>
+                    <input type="number" id="calc_programQty" class="form-input" step="any" placeholder="Enter Total Kg" oninput="autoCalculateYarn()">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label class="form-label">Net Weight (Per Bag/Ctn):</label>
+                    <input type="number" id="calc_netWeight" class="form-input" list="netWeightList" step="any" placeholder="e.g. 24 or 40" oninput="autoCalculateYarn(); rememberCalcValue('calc_netWeight')">
+                    <datalist id="netWeightList"></datalist>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label class="form-label">Cone Quantity (Per Bag/Ctn):</label>
+                    <input type="number" id="calc_coneQty" class="form-input" list="coneQtyList" step="any" placeholder="e.g. 15 or 24" oninput="autoCalculateYarn(); rememberCalcValue('calc_coneQty')">
+                    <datalist id="coneQtyList"></datalist>
+                </div>
+            </div>
+
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; border: 2px solid #3b82f6; text-align: center;">
+                <h3 style="margin: 0 0 10px 0; color: #1e40af; font-size: 18px;">Result</h3>
+                <div id="res_ctn" style="font-size: 24px; font-weight: bold; color: #0f172a; margin-bottom: 8px;">Ctn/Bag Qty = 0</div>
+                <div id="res_cone" style="font-size: 20px; font-weight: 600; color: #d97706;">Cone Qty = 0.00000</div>
+            </div>
+            
+            <div style="margin-top: 20px; text-align: center; font-size: 12px; color: #94a3b8; font-weight: bold;">
+                POWERED BY MR.AJ
+            </div>
+          </div>
+        </div>
+      `;
+      
+      document.getElementById('mainContent').innerHTML = html;
+      loadCalculatorHistory(); // Load saved suggestions
+    }
+
+    function autoCalculateYarn() {
+      let programQty = parseFloat(document.getElementById("calc_programQty").value) || 0;
+      let netWeight = parseFloat(document.getElementById("calc_netWeight").value) || 1;
+      let coneQty = parseFloat(document.getElementById("calc_coneQty").value) || 0;
+
+      if(netWeight === 0) netWeight = 1; // Prevent division by zero
+
+      let deliveryQty = programQty / netWeight;
+      let integerPart = Math.floor(deliveryQty);
+      let decimalPart = deliveryQty - integerPart;
+
+      document.getElementById("res_ctn").textContent = "Ctn/Bag Qty = " + integerPart;
+      document.getElementById("res_cone").textContent = "Cone Qty = " + (decimalPart * coneQty).toFixed(5);
+    }
+
+    function rememberCalcValue(fieldId) {
+      let input = document.getElementById(fieldId);
+      // Remove 'calc_' prefix to keep ID clean for storage key if needed, or just use list ID
+      let listId = fieldId === 'calc_netWeight' ? 'netWeightList' : 'coneQtyList'; 
+      let datalist = document.getElementById(listId);
+      let value = input.value.trim();
+
+      if (!value) return;
+
+      let saved = JSON.parse(localStorage.getItem(listId) || "[]");
+
+      if (!saved.includes(value)) {
+        saved.push(value);
+        localStorage.setItem(listId, JSON.stringify(saved));
+        
+        let option = document.createElement("option");
+        option.value = value;
+        datalist.appendChild(option);
+      }
+    }
+
+    function loadCalculatorHistory() {
+      ["netWeightList", "coneQtyList"].forEach(listId => {
+        let datalist = document.getElementById(listId);
+        if(datalist) {
+            let saved = JSON.parse(localStorage.getItem(listId) || "[]");
+            datalist.innerHTML = ''; // Clear first
+            saved.forEach(val => {
+              let option = document.createElement("option");
+              option.value = val;
+              datalist.appendChild(option);
+            });
+        }
+      });
+    }
+    // ==========================================
+    // CALCULATOR LOGIC END
+    // ==========================================
+  </script>
+  <style>
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+  </style>
+ </body>
+</html>
+    
+  </body>
+  
+</html>

@@ -647,7 +647,7 @@
       }
     }
     
-    function renderDashboard() {
+function renderDashboard() {
       const transactionRecords = allRecords.filter(r => r.module !== 'master_type' && r.module !== 'master_component' && r.module !== 'master_brand');
       
       // Get unique values for filters
@@ -656,12 +656,20 @@
       const allBrands = [...new Set(transactionRecords.map(r => r.brand).filter(Boolean))].sort();
       const allLocations = [...new Set(transactionRecords.map(r => r.location).filter(Boolean))].sort();
       
+      // Separate Records
       const receiveRecords = allRecords.filter(r => r.module === 'receive' || r.module === 'rereceive');
       const deliveryRecords = allRecords.filter(r => r.module === 'delivery');
       
+      // --- CALCULATIONS (QTY & VALUE) ---
       const totalReceived = receiveRecords.reduce((sum, r) => sum + (r.received_qty || 0), 0);
+      const totalReceivedValue = receiveRecords.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+      
       const totalDelivered = deliveryRecords.reduce((sum, r) => sum + (r.issued_qty || 0), 0);
+      const totalDeliveredValue = deliveryRecords.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+      
       const currentStock = totalReceived - totalDelivered;
+      const currentStockValue = totalReceivedValue - totalDeliveredValue;
+      
       const uniqueLots = new Set(receiveRecords.map(r => r.lot)).size;
       
       const recentTransactions = [...allRecords]
@@ -673,6 +681,7 @@
         <div>
           <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 24px;">📊 Dashboard Overview</h1>
           
+          <!-- FILTER SECTION -->
           <div class="card" style="margin-bottom: 20px;">
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
               <h2 style="font-size: 18px; font-weight: 700; color: #1e40af; margin: 0;">🔍 Smart Filters</h2>
@@ -681,32 +690,28 @@
             
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
               <div class="form-group">
-                <label class="form-label" for="dash_filter_lot">LOT Number</label>
+                <label class="form-label">LOT Number</label>
                 <select id="dash_filter_lot" class="form-select" onchange="applyDashboardFilters()">
                   <option value="">All LOTs</option>
                   ${allLots.map(lot => `<option value="${lot}">${lot}</option>`).join('')}
                 </select>
               </div>
-              
               <div class="form-group">
-                <label class="form-label" for="dash_filter_count">Yarn Count</label>
+                <label class="form-label">Yarn Count</label>
                 <select id="dash_filter_count" class="form-select" onchange="applyDashboardFilters()">
                   <option value="">All Counts</option>
                   ${allCounts.map(count => `<option value="${count}">${count}</option>`).join('')}
                 </select>
               </div>
-              
               <div class="form-group">
-                <label class="form-label" for="dash_filter_brand">Brand</label>
+                <label class="form-label">Brand</label>
                 <select id="dash_filter_brand" class="form-select" onchange="applyDashboardFilters()">
                   <option value="">All Brands</option>
                   ${allBrands.map(brand => `<option value="${brand}">${brand}</option>`).join('')}
                 </select>
               </div>
-              
-              <!-- Buyer এর পরিবর্তে Transaction Type বসানো হলো -->
               <div class="form-group">
-                <label class="form-label" for="dash_filter_module">Transaction Type</label>
+                <label class="form-label">Transaction Type</label>
                 <select id="dash_filter_module" class="form-select" onchange="applyDashboardFilters()">
                   <option value="">All Types</option>
                   <option value="receive">Receive Only</option>
@@ -714,25 +719,21 @@
                   <option value="rereceive">Re-Receive Only</option>
                 </select>
               </div>
-              
               <div class="form-group">
-                <label class="form-label" for="dash_filter_location">Location</label>
+                <label class="form-label">Location</label>
                 <select id="dash_filter_location" class="form-select" onchange="applyDashboardFilters()">
                   <option value="">All Locations</option>
                   ${allLocations.map(loc => `<option value="${loc}">${loc}</option>`).join('')}
                 </select>
               </div>
-              
               <div class="form-group">
-                <label class="form-label" for="dash_filter_from_date">From Date</label>
+                <label class="form-label">From Date</label>
                 <input type="date" id="dash_filter_from_date" class="form-input" onchange="applyDashboardFilters()">
               </div>
-              
               <div class="form-group">
-                <label class="form-label" for="dash_filter_to_date">To Date</label>
+                <label class="form-label">To Date</label>
                 <input type="date" id="dash_filter_to_date" class="form-input" onchange="applyDashboardFilters()">
               </div>
-              
               <div class="form-group" style="display: flex; align-items: flex-end;">
                 <button onclick="exportDashboardToExcel()" class="btn btn-success" style="width: 100%; padding: 10px;">
                   📥 Export to Excel
@@ -741,25 +742,61 @@
             </div>
           </div>
           
-          <div class="stats-grid">
-            <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-              <div class="stat-label">Total Received (Kg)</div>
-              <div class="stat-value">${totalReceived.toFixed(2)}</div>
+          <!-- SEPARATE CARDS GRID -->
+          <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;">
+            
+            <!-- 1. RECEIVED QTY -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);">
+              <div class="stat-label">📥 Total Received Qty</div>
+              <div class="stat-value" id="stat_recv_qty">${totalReceived.toFixed(2)}</div>
+              <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Unit: Kg</div>
             </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-              <div class="stat-label">Total Delivered (Kg)</div>
-              <div class="stat-value">${totalDelivered.toFixed(2)}</div>
+
+            <!-- 2. RECEIVED VALUE -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);">
+              <div class="stat-label">💰 Total Received Value</div>
+              <div class="stat-value" id="stat_recv_val">${totalReceivedValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+              <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Currency: USD/BDT</div>
             </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-              <div class="stat-label">Current Stock (Kg)</div>
-              <div class="stat-value">${currentStock.toFixed(2)}</div>
+
+            <!-- 3. DELIVERY QTY -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%);">
+              <div class="stat-label">📤 Total Delivery Qty</div>
+              <div class="stat-value" id="stat_del_qty">${totalDelivered.toFixed(2)}</div>
+              <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Unit: Kg</div>
             </div>
-            <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-              <div class="stat-label">Active Lots</div>
-              <div class="stat-value">${uniqueLots}</div>
+
+            <!-- 4. DELIVERY VALUE -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%);">
+              <div class="stat-label">💸 Total Delivery Value</div>
+              <div class="stat-value" id="stat_del_val">${totalDeliveredValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+              <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Currency: USD/BDT</div>
             </div>
+
+            <!-- 5. STOCK QTY -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #047857 0%, #10b981 100%);">
+              <div class="stat-label">📦 Current Stock Qty</div>
+              <div class="stat-value" id="stat_stock_qty">${currentStock.toFixed(2)}</div>
+              <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Unit: Kg</div>
+            </div>
+
+            <!-- 6. STOCK VALUE -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #065f46 0%, #059669 100%);">
+              <div class="stat-label">💎 Current Stock Value</div>
+              <div class="stat-value" id="stat_stock_val">${currentStockValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+              <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Currency: USD/BDT</div>
+            </div>
+
+            <!-- 7. ACTIVE LOTS -->
+            <div class="stat-card" style="background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%); grid-column: span 1;">
+              <div class="stat-label">🔖 Active Lots</div>
+              <div class="stat-value" id="stat_active_lots">${uniqueLots}</div>
+              <div style="font-size: 12px; opacity: 0.8; margin-top: 5px;">Unique Lot Numbers</div>
+            </div>
+
           </div>
           
+          <!-- RECENT TRANSACTIONS TABLE -->
           <div class="card">
             <h2 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 16px;">Recent Transactions</h2>
             ${recentTransactions.length > 0 ? `
@@ -1544,34 +1581,56 @@
       // 1. Calculate Stock First
       calculateActiveStock();
 
-      const html = `
-        <div style="height: 100%; display: flex; flex-direction: column;">
-          <div style="flex: 0 0 auto;">
-            <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">📤 Direct Delivery Entry</h1>
-            <p style="color: #64748b; margin-bottom: 16px;">Filter items and enter quantity directly in the table.</p>
-            
-            <!-- COMMON INFO SECTION -->
-            <div class="card" style="padding: 16px; margin-bottom: 16px; background: #f1f5f9; border: 1px solid #cbd5e1;">
-              <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
-                <div style="flex: 1; min-width: 150px;">
-                    <label class="form-label" style="margin-bottom: 4px; display:block;">Delivery Date *</label>
-                    <input type="date" id="bulk_date" class="form-input" style="width: 100%;" required>
-                </div>
-                <div style="flex: 1; min-width: 200px;">
-                    <label class="form-label" style="margin-bottom: 4px; display:block;">Issued To / Buyer *</label>
-                    <input type="text" id="bulk_issued_to" class="form-input" style="width: 100%;" placeholder="Example: Knitting Section">
-                </div>
-                <div style="flex: 1; min-width: 200px;">
-                    <label class="form-label" style="margin-bottom: 4px; display:block;">Common Remarks</label>
-                    <input type="text" id="bulk_remarks" class="form-input" style="width: 100%;" placeholder="Optional Note">
-                </div>
-                 <div style="flex: 0 0 auto;">
-                    <button onclick="handleBulkDeliverySubmit()" id="bulkSubmitBtn" class="btn btn-primary" style="height: 42px;">
-                      <span>💾 SAVE DELIVERIES</span>
-                    </button>
-                </div>
-              </div>
+const html = `
+    <div style="height: 100%; display: flex; flex-direction: column;">
+      <div style="flex: 0 0 auto;">
+        <h1 style="font-size: 28px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">📤 Direct Delivery Entry</h1>
+        <p style="color: #64748b; margin-bottom: 16px;">Filter items and enter quantity directly in the table.</p>
+        
+        <!-- COMMON INFO SECTION -->
+        <div class="card" style="padding: 16px; margin-bottom: 16px; background: #f1f5f9; border: 1px solid #cbd5e1;">
+          <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+
+            <!-- Delivery Date -->
+            <div style="flex: 1; min-width: 150px;">
+                <label class="form-label" style="margin-bottom: 4px; display:block;">Delivery Date *</label>
+                <input type="date" id="bulk_date" class="form-input" style="width: 100%;" required>
             </div>
+
+            <!-- Issued To Dropdown -->
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label" style="margin-bottom: 4px; display:block;">Issued To / Buyer *</label>
+
+                <select id="bulk_issued_to" class="form-input" style="width: 100%; height: 40px;">
+                    <option value="">-- Select Buyer / Section --</option>
+                    <option value="Knitting">Knitting</option>
+                    <option value="GMS TEXTILES">GMS TEXTILES</option>
+                    <option value="GMS TRIMS">GMS TRIMS</option>
+                    <option value="KNITTING SAMPLE">KNITTING SAMPLE</option>
+                    <option value="YARN DYEING">YARN DYEING</option>
+                    <option value="COLLAR">COLLAR</option>
+                    <option value="YARN TEST">YARN TEST</option>
+                    <option value="Store Return">Store Return</option>
+                </select>
+            </div>
+
+            <!-- Common Remarks -->
+            <div style="flex: 1; min-width: 200px;">
+                <label class="form-label" style="margin-bottom: 4px; display:block;">Common Remarks</label>
+                <input type="text" id="bulk_remarks" class="form-input" style="width: 100%;" placeholder="Optional Note">
+            </div>
+
+            <!-- Submit Button -->
+            <div style="flex: 0 0 auto;">
+                <button onclick="handleBulkDeliverySubmit()" id="bulkSubmitBtn" class="btn btn-primary" style="height: 42px;">
+                  <span>💾 SAVE DELIVERIES</span>
+                </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
 
 <!-- FILTER SECTION -->
             <div class="card" style="padding: 12px; margin-bottom: 10px; display: flex; gap: 10px; background: #3b82f6; color: white;">
@@ -2204,12 +2263,11 @@ function renderStockLedger() {
     
     let dashboardFilteredData = [];
     
-function applyDashboardFilters() {
+    function applyDashboardFilters() {
       const filters = {
         lot: document.getElementById('dash_filter_lot')?.value || '',
         count: document.getElementById('dash_filter_count')?.value || '',
         brand: document.getElementById('dash_filter_brand')?.value || '',
-        // Buyer ফিল্টার বাদ দেওয়া হয়েছে, Module যোগ করা হয়েছে
         module: document.getElementById('dash_filter_module')?.value || '',
         location: document.getElementById('dash_filter_location')?.value || '',
         fromDate: document.getElementById('dash_filter_from_date')?.value || '',
@@ -2222,10 +2280,7 @@ function applyDashboardFilters() {
         if (filters.lot && record.lot !== filters.lot) return false;
         if (filters.count && record.count !== filters.count) return false;
         if (filters.brand && record.brand !== filters.brand) return false;
-        
-        // Transaction Type Filter Logic
         if (filters.module && record.module !== filters.module) return false;
-        
         if (filters.location && record.location !== filters.location) return false;
         
         if (filters.fromDate || filters.toDate) {
@@ -2246,17 +2301,35 @@ function applyDashboardFilters() {
       const receiveRecords = filteredRecords.filter(r => r.module === 'receive' || r.module === 'rereceive');
       const deliveryRecords = filteredRecords.filter(r => r.module === 'delivery');
       
+      // Calculate Quantities
       const totalReceived = receiveRecords.reduce((sum, r) => sum + (r.received_qty || 0), 0);
       const totalDelivered = deliveryRecords.reduce((sum, r) => sum + (r.issued_qty || 0), 0);
       const currentStock = totalReceived - totalDelivered;
+      
+      // Calculate Values
+      const totalReceivedValue = receiveRecords.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+      const totalDeliveredValue = deliveryRecords.reduce((sum, r) => sum + (r.total_amount || 0), 0);
+      const currentStockValue = totalReceivedValue - totalDeliveredValue;
+      
       const uniqueLots = new Set(receiveRecords.map(r => r.lot)).size;
       
-      // Update stat cards
-      const statCards = document.querySelectorAll('.stat-value');
-      if (statCards[0]) statCards[0].textContent = totalReceived.toFixed(2);
-      if (statCards[1]) statCards[1].textContent = totalDelivered.toFixed(2);
-      if (statCards[2]) statCards[2].textContent = currentStock.toFixed(2);
-      if (statCards[3]) statCards[3].textContent = uniqueLots;
+      // Update DOM Elements for Each Separate Box
+      if(document.getElementById('stat_recv_qty')) {
+          // Received
+          document.getElementById('stat_recv_qty').textContent = totalReceived.toFixed(2);
+          document.getElementById('stat_recv_val').textContent = totalReceivedValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          
+          // Delivery
+          document.getElementById('stat_del_qty').textContent = totalDelivered.toFixed(2);
+          document.getElementById('stat_del_val').textContent = totalDeliveredValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          
+          // Stock
+          document.getElementById('stat_stock_qty').textContent = currentStock.toFixed(2);
+          document.getElementById('stat_stock_val').textContent = currentStockValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+          
+          // Lots
+          document.getElementById('stat_active_lots').textContent = uniqueLots;
+      }
       
       // Update table
       const recentTransactions = [...filteredRecords]
